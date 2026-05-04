@@ -688,9 +688,9 @@ function calcExPct(){
   const wkStart=getMon(TODAY);
   const wkLogs=logs.filter(l=>new Date(l.date)>=wkStart&&new Date(l.date)<=TODAY);
   const wkPct=Math.min(100,Math.round(wkLogs.length/4*100));
-  // Rolling average: sessions vs proportional target (4/week = ~0.57/day)
-  const daysElapsed=Math.max(1,DAY_NUM-1);
-  const targetSoFar=Math.max(1,(daysElapsed/7)*4);
+  // Rolling average: sessions vs proportional target (floor = 1 full week = 4 sessions)
+  const daysElapsed=Math.max(7,DAY_NUM-1);
+  const targetSoFar=(daysElapsed/7)*4;
   const avgPct=Math.min(100,Math.round(logs.length/targetSoFar*100));
   // Blend: 60% this week, 40% rolling average
   return Math.round(wkPct*0.6+avgPct*0.4);
