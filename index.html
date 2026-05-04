@@ -688,14 +688,14 @@ function calcExPct(){
   const wkStart=getMon(TODAY);
   const wkLogs=logs.filter(l=>new Date(l.date)>=wkStart&&new Date(l.date)<=TODAY);
   const wkPct=Math.min(100,Math.round(wkLogs.length/4*100));
-  // Overall average: sessions per full week elapsed
-  const weeksElapsed=Math.max(1,Math.ceil(DAY_NUM/7));
-  const avgPerWk=logs.length/weeksElapsed;
-  const avgPct=Math.min(100,Math.round(avgPerWk/4*100));
+  // Rolling average: sessions vs proportional target (4/week = ~0.57/day)
+  const daysElapsed=Math.max(1,DAY_NUM-1);
+  const targetSoFar=Math.max(1,(daysElapsed/7)*4);
+  const avgPct=Math.min(100,Math.round(logs.length/targetSoFar*100));
   // Blend: 60% this week, 40% rolling average
   return Math.round(wkPct*0.6+avgPct*0.4);
 }
-function calcSubPct(){
+  function calcSubPct(){
   const logs=gd('sub.logs',[]); if(!logs.length) return 0;
   const r7=logs.slice(0,7);
   const aR=r7.reduce((a,l)=>a+l.r,0)/r7.length;
