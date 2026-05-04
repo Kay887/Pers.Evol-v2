@@ -1220,9 +1220,8 @@ function bExercise(){
   const logs=gd('ex.logs',[]);
   const wkStart=getMon(TODAY);
   const wkLogs=logs.filter(l=>new Date(l.date)>=wkStart);
-  const wkE=Math.max(1,(DAY_NUM-1)/7);
-  const target=Math.round(wkE*3.5);
-  const consistency=Math.min(100,pct(logs.length,target));
+  const target=4;
+  const consistency=Math.min(100,pct(wkLogs.length,target));
   const todayMin=logs.filter(l=>l.date===TODAY_S).reduce((a,l)=>a+l.dur,0);
   const durPct=Math.min(100,Math.round(todayMin/45*100));
   let streak=0;const cd=new Date(TODAY);
