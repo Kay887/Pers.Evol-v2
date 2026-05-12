@@ -329,7 +329,6 @@ function sd(path,val){
   o[parts[parts.length-1]]=val;
   S.lastUpdated=Date.now();
   lsSet('pev2',S);
-  snapshotDaily();
   schedSave();
 }
 function ensureDaily(){
@@ -360,7 +359,7 @@ async function cloudLoad(){
 }
 
 let _saveTimer=null;
-function schedSave(){clearTimeout(_saveTimer);_saveTimer=setTimeout(cloudSave,1500);}
+function schedSave(){snapshotDaily();clearTimeout(_saveTimer);_saveTimer=setTimeout(cloudSave,1500);}
 
 async function cloudSave(){
   S.lastUpdated=Date.now();
