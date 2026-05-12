@@ -329,6 +329,7 @@ function sd(path,val){
   o[parts[parts.length-1]]=val;
   S.lastUpdated=Date.now();
   lsSet('pev2',S);
+  snapshotDaily();
   schedSave();
 }
 function ensureDaily(){
@@ -352,7 +353,7 @@ async function cloudLoad(){
     if(!rows.length){await cloudSave();_syncing=false;return;}
     const cloud=JSON.parse(rows[0].data||'{}');
     const cTs=cloud.lastUpdated||0, lTs=S.lastUpdated||0;
-    if(cTs>lTs){S=cloud;lsSet('pev2',S);ensureDaily();renderAll();syncDot('⇄ '+new Date().toLocaleTimeString(),'var(--green)');}
+   if(cTs>lTs){S=cloud;lsSet('pev2',S);ensureDaily();if(S.ui&&S.ui.ovDate&&S.ui.ovDate!==TODAY_S){S.ui.ovDate=TODAY_S;lsSet('pev2',S);}renderAll();syncDot('⇄ '+new Date().toLocaleTimeString(),'var(--green)');}
     else syncDot('✓ '+new Date().toLocaleTimeString(),'var(--t3)');
   }catch(e){syncDot('○','var(--t3)');}
   _syncing=false;
@@ -1353,7 +1354,7 @@ function bDaily(){
       <button class="btn bg" onclick="logGlu()">Log</button>
     </div>
     ${fasts.length>1?`<div style="display:flex;align-items:flex-end;gap:3px;height:52px;margin-bottom:4px">${fasts.map(l=>{const[,c]=gs('Fasting',l.val);const mx=Math.max(...fasts.map(x=>x.val),160);return `<div style="flex:1;height:${Math.max(4,(l.val/mx)*50)}px;border-radius:3px 3px 0 0;background:${c};opacity:.8" title="${l.val} · ${l.date}"></div>`;}).join('')}</div><div style="font-size:10px;color:var(--t3);text-align:center;margin-bottom:10px">Fasting trend</div>`:''}
-    ${logs.length?`<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr>${['Date','Type','mg/dL','Status'].map(h=>`<th style="text-align:left;padding:6px 10px;border-bottom:1px solid var(--b1);color:var(--t3);font-size:10px;letter-spacing:1.2px;font-weight:500">${h}</th>`).join('')}</tr></thead><tbody>${logs.slice(0,15).map(l=>{const[st,c]=gs(l.type,l.val);return `<tr><td style="padding:7px 10px;border-bottom:1px solid var(--b1);color:var(--t3);font-family:monospace;font-size:11px">${l.date}</td><td style="padding:7px 10px;border-bottom:1px solid var(--b1);color:var(--t2);font-size:11px">${l.type}</td><td style="padding:7px 10px;border-bottom:1px solid var(--b1);font-family:monospace;font-weight:600">${l.val}</td><td style="padding:7px 10px;border-bottom:1px solid var(--b1);color:${c};font-size:11px">${st}</td></tr>`;}).join('')}</tbody></table>`:'<div style="text-align:center;color:var(--t3);padding:18px;font-size:13px">No readings yet. Log fasting every Mon, Tue, Fri, Sat.</div>'}
+    ${logs.length?`<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr>${['Date','Type','mg/dL','Status'].map(h=>`<th style="text-align:left;padding:6px 10px;border-bottom:1px solid var(--b1);color:var(--t3);font-size:10px;letter-spacing:1.2px;font-weight:500">${h}</th>`).join('')}</tr></thead><tbody>${logs.slice(0,15).map((l,i)=>{const[st,c]=gs(l.type,l.val);return `<tr><td style="padding:7px 10px;border-bottom:1px solid var(--b1);color:var(--t3);font-family:monospace;font-size:11px">${l.date}</td><td style="padding:7px 10px;border-bottom:1px solid var(--b1);color:var(--t2);font-size:11px">${l.type}</td><td style="padding:7px 10px;border-bottom:1px solid var(--b1);font-family:monospace;font-weight:600">${l.val}</td><td style="padding:7px 10px;border-bottom:1px solid var(--b1);color:${c};font-size:11px">${st}</td><td style="padding:7px 10px;border-bottom:1px solid var(--b1)"><button onclick="deleteGlu(${i})" style="background:rgba(217,80,80,.1);border:1px solid rgba(217,80,80,.3);border-radius:5px;color:var(--red);font-size:10px;padding:3px 8px;cursor:pointer">Del</button></td></tr>`;}).join('')}</tbody></table>`:'<div style="text-align:center;color:var(--t3);padding:18px;font-size:13px">No readings yet. Log fasting every Mon, Tue, Fri, Sat.</div>'}
   </div>`;
 }function bMedical(){
   return `
@@ -3718,7 +3719,14 @@ function exDeleteRow(i){
   toast('🗑 Session deleted');
   switchTab('exercise');
 }
-
+function deleteGlu(i){
+  const logs=gd('glu.logs',[]);
+  if(!confirm(`Delete ${logs[i].type} ${logs[i].val} mg/dL on ${logs[i].date}?`)) return;
+  logs.splice(i,1);
+  sd('glu.logs',logs);
+  toast('🗑 Reading deleted');
+  switchTab('glucose');
+}
 function markWPDay(wpId,day){
   const key='wp.daily.'+wpId+'.d'+day;
   sd(key,!gd(key,false));
@@ -4139,7 +4147,10 @@ window.addEventListener('DOMContentLoaded',()=>{
     lsSet('pev2', S);
   }
   ensureDaily();
-  if(S.ui && S.ui.ovDate && S.ui.ovDate !== TODAY_S) { S.ui.ovDate = TODAY_S; lsSet('pev2',S); }
+  ensureDaily();
+  if(!S.ui) S.ui={};
+  S.ui.ovDate = TODAY_S;
+  lsSet('pev2',S);
   renderAll();
   switchTab('overview');
   setTimeout(cloudLoad,900);
