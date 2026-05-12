@@ -1075,7 +1075,7 @@ function bOverview(){
   const viewDate=gd('ui.ovDate',TODAY_S);
   const isToday=viewDate===TODAY_S;
   const viewD=new Date(viewDate);
-  const days=Array.from({length:14},(_,i)=>{const d=new Date(TODAY);d.setDate(TODAY.getDate()-13+i);return d.toISOString().split('T')[0];});
+  const days=Array.from({length:121},(_,i)=>{const d=new Date(TODAY);d.setDate(TODAY.getDate()-7+i);return d.toISOString().split('T')[0];});
 
   const datePicker=`<div style="margin-bottom:14px">
     <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--t3);margin-bottom:8px">BROWSE HISTORY</div>
