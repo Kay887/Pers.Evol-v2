@@ -1020,7 +1020,7 @@ function saveMissReason(reason){
 
 // Snapshot today&#39;s daily data into history (called on save)
 function snapshotDaily(){
-  ensureDaily();
+  if(!S.daily||S.daily.date!==TODAY_S) return;
   if(!S.dailyHistory) S.dailyHistory={};
   S.dailyHistory[TODAY_S]={
     tasks:{...S.daily.tasks},
@@ -1030,7 +1030,8 @@ function snapshotDaily(){
     subM:S.daily.subM||0,
     date:TODAY_S
   };
-  sd('dailyHistory.'+TODAY_S,S.dailyHistory[TODAY_S]);
+  // Write directly to S — no sd() call to avoid infinite loop
+  lsSet('pev2',S);
 }
 function showPanel(id){
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
@@ -3664,6 +3665,10 @@ function sendNX(){
 
 function toggleIntSmall(id){sd('int.small.'+TODAY_S+'.'+id,!gd('int.small.'+TODAY_S+'.'+id,false));switchTab('intimacy');}
 function toggleGoalExpand(id){const cur=gd('ui.goalExpanded','');sd('ui.goalExpanded',cur===id?'':id);switchTab('goals');}
+function toggleDCExpand(id){
+  sd('ui.dc.expanded', gd('ui.dc.expanded','')===id?'':id);
+  switchTab('phase1');
+}
 function toggleGoalSub(gid,idx){sd('goals.sub.'+gid+'.'+idx,!gd('goals.sub.'+gid+'.'+idx,false));switchTab('goals');}
 function saveGoalNote(gid,val){sd('goals.note.'+gid,val);}
 function toggleWPSecExpand(key){sd('ui.wpSec',gd('ui.wpSec','')===key?'':key);switchTab('papers');}
@@ -4145,7 +4150,6 @@ window.addEventListener('DOMContentLoaded',()=>{
     }
     lsSet('pev2', S);
   }
-  ensureDaily();
   ensureDaily();
   if(!S.ui) S.ui={};
   S.ui.ovDate = TODAY_S;
