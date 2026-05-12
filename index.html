@@ -302,8 +302,8 @@ const ANTHROPIC_KEY = '';
 
 const START = new Date('2026-05-09');
 const END   = new Date('2026-09-05');
-const TODAY = (() => { const d=new Date(); d.setHours(0,0,0,0); return d; })();
-const TODAY_S = TODAY.toISOString().split('T')[0];
+const TODAY = (() => { const d=new Date(new Date().toLocaleString('en-US',{timeZone:'Asia/Kolkata'})); d.setHours(0,0,0,0); return d; })();
+const TODAY_S = new Date(new Date().toLocaleString('en-US',{timeZone:'Asia/Kolkata'})).toLocaleDateString('en-CA');
 const DAY_NUM = Math.max(1, Math.round((TODAY - START)/86400000)+1);
 const TOTAL_DAYS = Math.round((END - START)/86400000);
 const TIME_PCT = Math.min(100, Math.round((DAY_NUM-1)/TOTAL_DAYS*100));
