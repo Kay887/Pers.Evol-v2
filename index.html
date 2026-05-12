@@ -4123,7 +4123,24 @@ function initPIN(){
 window.addEventListener('DOMContentLoaded',()=>{
   initPIN();
   S=lsGet('pev2',{});
+  if(S.ui && S.ui.ovDate && S.ui.ovDate !== TODAY_S) { S.ui.ovDate = TODAY_S; lsSet('pev2',S); }
+  // Recover data logged under wrong date (timezone shift)
+  if(S.daily && S.daily.date && S.daily.date !== TODAY_S) {
+    const yesterday = S.daily;
+    if(!S.dailyHistory) S.dailyHistory = {};
+    S.dailyHistory[yesterday.date] = yesterday;
+    const loggedDate = new Date(yesterday.date + 'T00:00:00');
+    const todayDate  = new Date(TODAY_S + 'T00:00:00');
+    const diffDays   = Math.round((todayDate - loggedDate) / 86400000);
+    if(diffDays <= 1) {
+      S.daily = { ...yesterday, date: TODAY_S };
+    } else {
+      S.daily = { date: TODAY_S, tasks:{}, meds:{}, water:0, subR:0, subM:0 };
+    }
+    lsSet('pev2', S);
+  }
   ensureDaily();
+  if(S.ui && S.ui.ovDate && S.ui.ovDate !== TODAY_S) { S.ui.ovDate = TODAY_S; lsSet('pev2',S); }
   renderAll();
   switchTab('overview');
   setTimeout(cloudLoad,900);
