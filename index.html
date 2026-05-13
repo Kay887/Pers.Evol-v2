@@ -1493,279 +1493,793 @@ function bDaily(){
     ${logs.length?`<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr>${['Date','Weight','Δ','Note'].map(h=>`<th style="text-align:left;padding:6px 10px;border-bottom:1px solid var(--b1);color:var(--t3);font-size:10px;letter-spacing:1.2px;font-weight:500">${h}</th>`).join('')}</tr></thead><tbody>${logs.slice(0,12).map((w,i)=>{const prev=logs[i+1];const d=prev?(w.val-prev.val).toFixed(1):null;return `<tr><td style="padding:7px 10px;border-bottom:1px solid var(--b1);color:var(--t3);font-family:monospace;font-size:11px">${w.date}</td><td style="padding:7px 10px;border-bottom:1px solid var(--b1);font-family:monospace">${w.val} kg</td><td style="padding:7px 10px;border-bottom:1px solid var(--b1);font-family:monospace;color:${d===null?'var(--t3)':parseFloat(d)<=0?'var(--green)':'var(--orange)'}">${d!==null?(parseFloat(d)>0?'+':'')+d:'—'}</td><td style="padding:7px 10px;border-bottom:1px solid var(--b1);color:var(--t3);font-size:11px">${w.note||'—'}</td></tr>`;}).join('')}</tbody></table>`:'<div style="text-align:center;color:var(--t3);padding:18px;font-size:13px">Log your first reading. Weigh every Monday morning.</div>'}
   </div>`;
 }function bExercise(){
-  const logs=gd('ex.logs',[]);
-  const wkStart=getMon(TODAY);
-  const wkLogs=logs.filter(l=>new Date(l.date)>=wkStart);
-  // Consistency = this week's sessions toward weekly target of 6
+  const WEEKLY_SCHEDULE = {
+  1: { // Monday
+    label: 'Upper Pull',
+    icon: '💪',
+    theme: 'Back · Biceps · Rear Delts',
+    cycling: 25,
+    strength: 20,
+    strengthName: 'Pull Day / Bent Rows / Renegade Rows',
+    why: 'Pulling movements hit large back muscles → highest T stimulus after legs',
+    c: 'var(--blue)',
+  },
+  2: { // Tuesday
+    label: 'Lower Body',
+    icon: '🦵',
+    theme: 'Quads · Glutes · Hamstrings',
+    cycling: 25,
+    strength: 20,
+    strengthName: 'TYR or Grindstone',
+    why: 'Leg day = single biggest testosterone release. Do it early when fresh.',
+    c: 'var(--red)',
+  },
+  3: { // Wednesday
+    label: 'Core & Libido Stretch',
+    icon: '🧘',
+    theme: 'Active Recovery · Pelvic Floor · Hip Flexors',
+    cycling: 25,
+    strength: 20,
+    strengthName: 'core.exe + libido stretches',
+    why: 'Hip flexor + pelvic floor work directly supports blood flow and libido.',
+    c: 'var(--teal)',
+  },
+  4: { // Thursday
+    label: 'Upper Push',
+    icon: '🏋️',
+    theme: 'Chest · Shoulders · Triceps',
+    cycling: 25,
+    strength: 20,
+    strengthName: 'Stronger Pecs / Push-Pull-Legs B',
+    why: 'Push/Pull balance. Shoulder press and chest work support posture.',
+    c: 'var(--orange)',
+  },
+  5: { // Friday
+    label: 'Lower Body – Glutes',
+    icon: '🍑',
+    theme: 'Glutes Focus',
+    cycling: 25,
+    strength: 20,
+    strengthName: 'Glutes Sculpt / Muscle Factory Lowerbody',
+    why: 'Glutes = highest correlation with T production of any muscle group.',
+    c: 'var(--pink)',
+  },
+  6: { // Saturday
+    label: 'Full Body',
+    icon: '⚡',
+    theme: 'Compound Metabolic Burn',
+    cycling: 25,
+    strength: 20,
+    strengthName: 'JACKED / Full-Body Power / Body+Patch',
+    why: 'Thrusters, renegade rows, split lunges. Metabolic burn + full T stimulus.',
+    c: 'var(--gold)',
+  },
+  0: { // Sunday
+    label: 'Strength Only',
+    icon: '🔥',
+    theme: 'Pure Strength · No Cycling',
+    cycling: 0,
+    strength: 45,
+    strengthName: 'Beginner Dumbbells → Dumbbell Abs → Push-Pull-Legs A → repeat',
+    why: 'CNS recovery from cycling while still building. One longer pure strength day.',
+    c: 'var(--purple)',
+  },
+};
+ 
+// ── EXERCISE CATALOGUE ───────────────────────────────────────────────
+const EX_CATALOGUE = [
+  {
+    id: 'cat_upper_pull',
+    label: 'Upper Pull',
+    icon: '💪',
+    c: 'var(--blue)',
+    day: 'Monday',
+    workouts: [
+      {
+        name: 'Pull Day',
+        duration: 20,
+        exercises: ['Bent Over Rows', 'Renegade Rows', 'Lat Pulldown (band)', 'Face Pulls', 'Hammer Curls'],
+      },
+      {
+        name: 'Grindstone',
+        duration: 20,
+        exercises: ['Single-arm DB Row', 'Seal Row', 'Rear Delt Fly', 'Reverse Curl', 'Shrugs'],
+      },
+      {
+        name: 'TYR',
+        duration: 20,
+        exercises: ['T-raises', 'Y-raises', 'R-external rotation', 'Band pull-apart', 'Facepull'],
+      },
+    ],
+  },
+  {
+    id: 'cat_lower_body',
+    label: 'Lower Body',
+    icon: '🦵',
+    c: 'var(--red)',
+    day: 'Tuesday / Friday',
+    workouts: [
+      {
+        name: 'Grindstone Lower',
+        duration: 20,
+        exercises: ['Goblet Squat', 'Romanian Deadlift', 'Split Lunge', 'Hip Thrust', 'Step-Up'],
+      },
+      {
+        name: 'TYR Legs',
+        duration: 20,
+        exercises: ['Sumo Squat', 'Nordic Curl', 'Bulgarian Split Squat', 'Calf Raise', 'Lateral Lunge'],
+      },
+      {
+        name: 'Glutes Sculpt',
+        duration: 20,
+        exercises: ['Hip Thrust', 'Kickback', 'Clamshell', 'Sumo Deadlift', 'Glute Bridge'],
+      },
+      {
+        name: 'Muscle Factory Lowerbody',
+        duration: 20,
+        exercises: ['Leg Press (band)', 'Hack Squat', 'Leg Curl', 'Seated Calf', 'Leg Extension'],
+      },
+    ],
+  },
+  {
+    id: 'cat_core_libido',
+    label: 'Core & Libido Stretch',
+    icon: '🧘',
+    c: 'var(--teal)',
+    day: 'Wednesday',
+    workouts: [
+      {
+        name: 'core.exe',
+        duration: 20,
+        exercises: ['Plank', 'Dead Bug', 'Pallof Press', 'McGill Curl-up', 'Bird Dog'],
+      },
+      {
+        name: 'Libido Stretch',
+        duration: 20,
+        exercises: ['Hip Flexor Lunge Stretch', 'Pigeon Pose', 'Pelvic Floor Kegel', 'Butterfly Stretch', 'Deep Squat Hold'],
+      },
+    ],
+  },
+  {
+    id: 'cat_upper_push',
+    label: 'Upper Push',
+    icon: '🏋️',
+    c: 'var(--orange)',
+    day: 'Thursday',
+    workouts: [
+      {
+        name: 'Stronger Pecs',
+        duration: 20,
+        exercises: ['DB Bench Press', 'Incline Press', 'Cable Fly', 'Chest Dip', 'Close-grip Push-up'],
+      },
+      {
+        name: 'Push-Pull-Legs B',
+        duration: 20,
+        exercises: ['Overhead Press', 'Lateral Raise', 'Front Raise', 'Tricep Pushdown', 'DB Skull Crusher'],
+      },
+    ],
+  },
+  {
+    id: 'cat_full_body',
+    label: 'Full Body',
+    icon: '⚡',
+    c: 'var(--gold)',
+    day: 'Saturday',
+    workouts: [
+      {
+        name: 'JACKED',
+        duration: 20,
+        exercises: ['Thruster', 'Renegade Row', 'Jump Squat', 'Push Press', 'DB Snatch'],
+      },
+      {
+        name: 'Full-Body Power',
+        duration: 20,
+        exercises: ['Clean & Press', 'Split Lunge Curl', 'Plyo Push-up', 'KB Swing', 'Burpee'],
+      },
+      {
+        name: 'Body+Patch',
+        duration: 20,
+        exercises: ['Compound Deadlift', 'Row + Curl combo', 'Squat + Press', 'Plank-to-Push-up', 'Mountain Climber'],
+      },
+    ],
+  },
+  {
+    id: 'cat_strength_sunday',
+    label: 'Strength Day',
+    icon: '🔥',
+    c: 'var(--purple)',
+    day: 'Sunday',
+    workouts: [
+      {
+        name: 'Beginner Dumbbells',
+        duration: 45,
+        exercises: ['DB Squat', 'DB Row', 'DB Press', 'DB Curl', 'DB Lunge', 'DB Deadlift'],
+      },
+      {
+        name: 'Dumbbell Abs',
+        duration: 45,
+        exercises: ['Weighted Crunch', 'Side Bend', 'Lying Leg Raise', 'Russian Twist', 'Plank + Row', 'V-up'],
+      },
+      {
+        name: 'Push-Pull-Legs A',
+        duration: 45,
+        exercises: ['Bench Press', 'Deadlift', 'Overhead Press', 'Bent Row', 'Squat', 'Lat Pull'],
+      },
+    ],
+  },
+  {
+    id: 'cat_cardio',
+    label: 'Cycling / Cardio',
+    icon: '🚴',
+    c: 'var(--cyan)',
+    day: 'Mon–Sat',
+    workouts: [
+      {
+        name: 'Cycling Block',
+        duration: 25,
+        exercises: ['25-min stationary / road cycling', 'Zone 2 heart rate', 'Steady state cadence'],
+      },
+      {
+        name: 'Walk',
+        duration: 30,
+        exercises: ['30-min brisk walk', 'Aim for 3,000+ steps'],
+      },
+    ],
+  },
+];
+ 
+// ── SESSION SEGMENTS STATE ────────────────────────────────────────────
+// Stored in gd('ui.exSegments') as array of {type, dur, note}
+ 
+function bExercise() {
+  const logs = gd('ex.logs', []);
+  const wkStart = getMon(TODAY);
+  const wkLogs = logs.filter(l => new Date(l.date) >= wkStart);
   const weeklyTarget = 6;
   const consistency = Math.min(100, Math.round(wkLogs.length / weeklyTarget * 100));
-  const target = weeklyTarget;
-  const todayMin=logs.filter(l=>l.date===TODAY_S).reduce((a,l)=>a+l.dur,0);
-  const durPct=Math.min(100,Math.round(todayMin/45*100));
-  let streak=0;const cd=new Date(TODAY);
-  for(let i=0;i<90;i++){const ds=cd.toISOString().split('T')[0];if(logs.some(l=>l.date===ds)){streak++;cd.setDate(cd.getDate()-1);}else break;}
-  const streakPct=Math.min(100,Math.round(streak/30*100));
-
-  const rings=[
-    {l:'Consistency',v:consistency,c:'#ff375f',r:80,d:`${wkLogs.length} sessions / ${target} this week`},
-    {l:'Duration',   v:durPct,     c:'#74d680',r:62,d:`${todayMin} / 45 min today`},
-    {l:'Streak',     v:streakPct,  c:'#4ecfff',r:44,d:`${streak} consecutive days`},
+  const todayMin = logs.filter(l => l.date === TODAY_S).reduce((a, l) => a + l.dur, 0);
+  const durPct = Math.min(100, Math.round(todayMin / 45 * 100));
+  let streak = 0;
+  const cd = new Date(TODAY);
+  for (let i = 0; i < 90; i++) {
+    const ds = cd.toISOString().split('T')[0];
+    if (logs.some(l => l.date === ds)) { streak++; cd.setDate(cd.getDate() - 1); }
+    else break;
+  }
+  const streakPct = Math.min(100, Math.round(streak / 30 * 100));
+ 
+  // Today's schedule
+  const todayDow = TODAY.getDay(); // 0=Sun
+  const sched = WEEKLY_SCHEDULE[todayDow];
+ 
+  // Watch data
+  const mv = gd('ex.watch.' + TODAY_S + '.move', 0);
+  const ex2 = gd('ex.watch.' + TODAY_S + '.exercise', 0);
+  const st = gd('ex.watch.' + TODAY_S + '.stand', 0);
+  const steps = gd('ex.watch.' + TODAY_S + '.steps', 0);
+  const mvG = gd('ex.watch.goals.move', 400);
+  const exG = gd('ex.watch.goals.exercise', 30);
+  const stG = gd('ex.watch.goals.stand', 12);
+  const mvP = Math.min(100, Math.round(mv / mvG * 100));
+  const exP = Math.min(100, Math.round(ex2 / exG * 100));
+  const stP = Math.min(100, Math.round(st / stG * 100));
+  const avgRingPct = Math.round((mvP + exP + stP) / 3);
+ 
+  // Session segments
+  const segments = gd('ui.exSegments', []);
+  const segDate = gd('ui.exSegDate', TODAY_S);
+ 
+  // Catalogue state
+  const catExpanded = gd('ui.exCatOpen', '');
+ 
+  // History: selected day
+  const histDay = gd('ui.exHistDay', '');
+ 
+  // ── SECTION 1: Apple Watch + Today's Prescription ─────────────────
+  const C = 2 * Math.PI;
+  const watchRings = [
+    { key: 'move', label: 'Move', val: mv, goal: mvG, pct: mvP, r: 52, c: '#ff375f', unit: 'cal' },
+    { key: 'exercise', label: 'Exercise', val: ex2, goal: exG, pct: exP, r: 40, c: '#92e836', unit: 'min' },
+    { key: 'stand', label: 'Stand', val: st, goal: stG, pct: stP, r: 28, c: '#1fd1f9', unit: 'hrs' },
   ];
-
-  const wkly=Array.from({length:4},(_,wi)=>{const wE2=new Date(TODAY);wE2.setDate(TODAY.getDate()-wi*7);const wS2=getMon(wE2);const c=logs.filter(l=>{const d=new Date(l.date);return d>=wS2&&d<=wE2;}).length;const m=logs.filter(l=>{const d=new Date(l.date);return d>=wS2&&d<=wE2;}).reduce((a,l)=>a+l.dur,0);return {l:wi===0?'This week':`${wi}w ago`,c,m};}).reverse();
-
-  return `
-  <div class="card" style="background:linear-gradient(135deg,#0a0a18,#0d0d20);border-color:rgba(255,255,255,.08)">
-    <div class="ct" style="color:rgba(255,255,255,.4)">Activity Rings</div>
-    <div style="display:flex;align-items:center;gap:0;padding:8px 0">
-      <div style="position:relative;width:190px;height:190px;flex-shrink:0">
-        <svg width="190" height="190" viewBox="0 0 190 190">
-          ${rings.map(ring=>{const C=2*Math.PI*ring.r;const off=C*(1-ring.v/100);return `
-          <circle cx="95" cy="95" r="${ring.r}" class="ring-track" stroke="${ring.c}"/>
-          <circle cx="95" cy="95" r="${ring.r}" class="ring-glow" stroke="${ring.c}" style="stroke-dasharray:${C};stroke-dashoffset:${off}" transform="rotate(-90 95 95)"/>
-          <circle cx="95" cy="95" r="${ring.r}" class="ring-fill" stroke="${ring.c}" style="stroke-dasharray:${C};stroke-dashoffset:${off}" transform="rotate(-90 95 95)"/>`}).join('')}
-          <text x="95" y="87" text-anchor="middle" fill="rgba(255,255,255,.4)" font-size="9" letter-spacing="1" font-family="monospace">ACTIVITY</text>
-          <text x="95" y="103" text-anchor="middle" fill="#fff" font-size="20" font-weight="700" font-family="monospace">${consistency}%</text>
-          <text x="95" y="116" text-anchor="middle" fill="rgba(255,255,255,.3)" font-size="9" font-family="monospace">consistency</text>
-        </svg>
-      </div>
-      <div style="flex:1;padding-left:14px">
-        ${rings.map(ring=>`<div style="margin-bottom:12px">
-          <div style="display:flex;align-items:center;gap:7px;margin-bottom:4px">
-            <div style="width:10px;height:10px;border-radius:50%;background:${ring.c};box-shadow:0 0 8px ${ring.c}44"></div>
-            <span style="font-size:11px;color:rgba(255,255,255,.7);font-weight:600">${ring.l}</span>
-            <span style="font-family:monospace;font-size:13px;color:${ring.c};margin-left:auto;font-weight:700">${ring.v}%</span>
-          </div>
-          <div style="height:5px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden"><div style="height:100%;width:${ring.v}%;background:${ring.c};border-radius:3px;box-shadow:0 0 6px ${ring.c}66;transition:width 1.2s ease"></div></div>
-          <div style="font-size:10px;color:rgba(255,255,255,.3);margin-top:3px">${ring.d}</div>
-        </div>`).join('')}
-      </div>
-    </div>
-  </div>
-
-  <div class="g3" style="margin-bottom:14px">
-    <div class="tile"><div class="tl">This Week</div><div class="tv" style="color:var(--green)">${wkLogs.length}</div><div class="ts">Target: 6</div></div>
-    <div class="tile"><div class="tl">All Sessions</div><div class="tv" style="color:var(--blue)">${logs.length}</div><div class="ts">since May 9</div></div>
-    <div class="tile"><div class="tl">Streak</div><div class="tv" style="color:var(--cyan)">${streak}</div><div class="ts">days</div></div>
-  </div>
-
-  <div class="card" style="background:linear-gradient(135deg,#0a0a18,#0d0d1e);border-color:rgba(255,55,95,.3);margin-bottom:14px">
+ 
+  const section1 = `
+  <!-- ── SECTION 1: Watch Rings + Today's Prescription ── -->
+  <div class="card" style="background:linear-gradient(135deg,#08080f,#0d0d1a);border-color:rgba(255,255,255,.07);margin-bottom:14px">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
       <div>
-        <div class="ct" style="color:rgba(255,255,255,.45);margin-bottom:2px">⌚ Apple Watch · Today</div>
-        <div style="font-size:10px;color:rgba(255,255,255,.3);font-family:monospace">${TODAY_S}</div>
+        <div class="ct" style="color:rgba(255,255,255,.4);margin-bottom:2px">⌚ Apple Watch Rings</div>
+        <div style="font-size:10px;color:rgba(255,255,255,.25);font-family:monospace">${TODAY_S}</div>
       </div>
-      <button onclick="toggleWatchGoals()" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:6px;color:rgba(255,255,255,.4);font-size:10px;padding:5px 10px;cursor:pointer">⚙ Goals</button>
+      <button onclick="toggleWatchGoals()" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:6px;color:rgba(255,255,255,.35);font-size:10px;padding:5px 10px;cursor:pointer;font-family:monospace">⚙ Goals</button>
     </div>
-
-    <!-- RINGS + STATS ROW -->
+ 
     <div style="display:flex;align-items:center;gap:18px;margin-bottom:16px">
-      <!-- 3-ring Apple Watch style SVG -->
+      <!-- 3-ring SVG -->
       <div style="position:relative;width:130px;height:130px;flex-shrink:0">
         <svg width="130" height="130" viewBox="0 0 130 130">
-          ${(()=>{
-            const mv  = gd('ex.watch.'+TODAY_S+'.move',0);
-            const ex2 = gd('ex.watch.'+TODAY_S+'.exercise',0);
-            const st  = gd('ex.watch.'+TODAY_S+'.stand',0);
-            const mvG = gd('ex.watch.goals.move',400);
-            const exG = gd('ex.watch.goals.exercise',30);
-            const stG = gd('ex.watch.goals.stand',12);
-            const mvP = Math.min(100, Math.round(mv/mvG*100));
-            const exP = Math.min(100, Math.round(ex2/exG*100));
-            const stP = Math.min(100, Math.round(st/stG*100));
-            const rings=[
-              {r:55, p:mvP,  c:'#ff375f', glow:'rgba(255,55,95,.35)'},
-              {r:41, p:exP,  c:'#92e836', glow:'rgba(146,232,54,.35)'},
-              {r:27, p:stP,  c:'#1fd1f9', glow:'rgba(31,209,249,.35)'},
-            ];
-            const avgP=Math.round((mvP+exP+stP)/3);
-            let out='';
-            rings.forEach(ring=>{
-              const C=2*Math.PI*ring.r;
-              const off=C*(1-ring.p/100);
-              // Track
-              out+='<circle cx="65" cy="65" r="'+ring.r+'" fill="none" stroke="'+ring.c+'" stroke-width="10" opacity=".15"/>';
-              // Glow layer
-              if(ring.p>0){
-                out+='<circle cx="65" cy="65" r="'+ring.r+'" fill="none" stroke="'+ring.c+'" stroke-width="14" stroke-linecap="round" opacity=".12" stroke-dasharray="'+C+'" stroke-dashoffset="'+off+'" transform="rotate(-90 65 65)"/>';
-                // Fill
-                out+='<circle cx="65" cy="65" r="'+ring.r+'" fill="none" stroke="'+ring.c+'" stroke-width="10" stroke-linecap="round" stroke-dasharray="'+C+'" stroke-dashoffset="'+off+'" transform="rotate(-90 65 65)" style="transition:stroke-dashoffset 1.2s cubic-bezier(.4,0,.2,1)"/>';
-              }
-            });
-            out+='<text x="65" y="59" text-anchor="middle" fill="rgba(255,255,255,.35)" font-size="9" letter-spacing="1" font-family="monospace">ACTIVITY</text>';
-            out+='<text x="65" y="74" text-anchor="middle" fill="#fff" font-size="18" font-weight="700" font-family="monospace">'+avgP+'%</text>';
-            out+='<text x="65" y="86" text-anchor="middle" fill="rgba(255,255,255,.3)" font-size="8" font-family="monospace">avg rings</text>';
-            return out;
-          })()}
+          ${watchRings.map(ring => {
+            const circ = 2 * Math.PI * ring.r;
+            const off = circ * (1 - ring.pct / 100);
+            return `<circle cx="65" cy="65" r="${ring.r}" fill="none" stroke="${ring.c}" stroke-width="10" opacity=".15"/>
+            ${ring.pct > 0 ? `<circle cx="65" cy="65" r="${ring.r}" fill="none" stroke="${ring.c}" stroke-width="14" stroke-linecap="round" opacity=".1" stroke-dasharray="${circ}" stroke-dashoffset="${off}" transform="rotate(-90 65 65)"/>
+            <circle cx="65" cy="65" r="${ring.r}" fill="none" stroke="${ring.c}" stroke-width="10" stroke-linecap="round" stroke-dasharray="${circ}" stroke-dashoffset="${off}" transform="rotate(-90 65 65)" style="transition:stroke-dashoffset 1.2s ease"/>` : ''}`;
+          }).join('')}
+          <text x="65" y="58" text-anchor="middle" fill="rgba(255,255,255,.3)" font-size="9" letter-spacing="1" font-family="monospace">RINGS</text>
+          <text x="65" y="73" text-anchor="middle" fill="#fff" font-size="20" font-weight="700" font-family="monospace">${avgRingPct}%</text>
+          <text x="65" y="86" text-anchor="middle" fill="rgba(255,255,255,.25)" font-size="8" font-family="monospace">avg</text>
         </svg>
       </div>
-
+ 
       <!-- Ring breakdown -->
       <div style="flex:1">
-        ${[
-          {key:'move',     label:'Move',     unit:'cal', goal:gd('ex.watch.goals.move',400),     c:'#ff375f'},
-          {key:'exercise', label:'Exercise',  unit:'min', goal:gd('ex.watch.goals.exercise',30),  c:'#92e836'},
-          {key:'stand',    label:'Stand',     unit:'hrs', goal:gd('ex.watch.goals.stand',12),     c:'#1fd1f9'},
-        ].map(r=>{
-          const val=gd('ex.watch.'+TODAY_S+'.'+r.key,0);
-          const p=Math.min(100,Math.round(val/r.goal*100));
-          const over=p>=100;
-          return '<div style="margin-bottom:11px">'
-            +'<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px">'
-              +'<span style="font-size:11px;font-weight:600;color:'+r.c+'">'+r.label+'</span>'
-              +'<span style="font-family:monospace;font-size:12px;color:'+(over?'#fff':r.c)+'">'+val+'<span style="font-size:9px;opacity:.5"> /'+r.goal+' '+r.unit+'</span></span>'
-            +'</div>'
-            +'<div style="height:6px;background:rgba(255,255,255,.08);border-radius:3px;overflow:visible;position:relative">'
-              +'<div style="height:100%;width:'+Math.min(100,p)+'%;background:'+r.c+';border-radius:3px;box-shadow:0 0 8px '+r.c+'55;transition:width 1s ease'+(over?';animation:ringPulse 1.5s ease infinite':'')+'"></div>'
-              +(over?'<div style="position:absolute;right:-8px;top:-3px;font-size:10px">🔥</div>':'')
-            +'</div>'
-          +'</div>';
+        ${watchRings.map(r => {
+          const over = r.pct >= 100;
+          return `<div style="margin-bottom:11px">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px">
+              <span style="font-size:11px;font-weight:600;color:${r.c}">${r.label}</span>
+              <span style="font-family:monospace;font-size:12px;color:${over ? '#fff' : r.c}">${r.val}<span style="font-size:9px;opacity:.5"> /${r.goal} ${r.unit}</span></span>
+            </div>
+            <div style="height:6px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden">
+              <div style="height:100%;width:${Math.min(100, r.pct)}%;background:${r.c};border-radius:3px;transition:width 1s ease"></div>
+            </div>
+          </div>`;
         }).join('')}
-        <div style="display:flex;align-items:center;gap:6px;margin-top:4px">
+        <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
           <span style="font-size:16px">👟</span>
           <div>
-            <div style="font-family:monospace;font-size:14px;font-weight:700;color:var(--gold)">${gd('ex.watch.'+TODAY_S+'.steps',0).toLocaleString()}</div>
-            <div style="font-size:9px;color:rgba(255,255,255,.3);font-family:monospace">steps today</div>
+            <div style="font-family:monospace;font-size:15px;font-weight:700;color:var(--gold)">${steps.toLocaleString()}</div>
+            <div style="font-size:9px;color:rgba(255,255,255,.25);font-family:monospace">/ 8,000 steps</div>
           </div>
-          <div style="margin-left:auto;font-size:10px;color:rgba(255,255,255,.3);font-family:monospace">goal: 8,000</div>
+          <div style="flex:1;text-align:right">
+            <div style="height:4px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden;width:80px;margin-left:auto">
+              <div style="height:100%;width:${Math.min(100, Math.round(steps / 8000 * 100))}%;background:var(--gold);border-radius:2px"></div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
-
-    <!-- INPUT SECTION -->
-    <div style="border-top:1px solid rgba(255,255,255,.06);padding-top:12px">
-      <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:8px;font-family:monospace">Log today&#39;s rings</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;margin-bottom:10px">
+ 
+    <!-- Log rings input -->
+    <div style="border-top:1px solid rgba(255,255,255,.06);padding-top:12px;margin-bottom:10px">
+      <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:8px;font-family:monospace">Log today's rings</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px">
         ${[
-          {key:'move',     label:'Move',    placeholder:'0',    unit:'cal', c:'#ff375f'},
-          {key:'exercise', label:'Exercise', placeholder:'0',   unit:'min', c:'#92e836'},
-          {key:'stand',    label:'Stand',    placeholder:'0',   unit:'hrs', c:'#1fd1f9'},
-          {key:'steps',    label:'Steps',    placeholder:'0',   unit:'',    c:'var(--gold)'},
-        ].map(f=>`
-        <div style="background:rgba(255,255,255,.04);border:1px solid ${f.c}33;border-radius:8px;padding:8px">
-          <div style="font-size:8px;color:${f.c};letter-spacing:1px;text-transform:uppercase;margin-bottom:5px;font-family:monospace">${f.label}</div>
-          <input id="watch-${f.key}" type="number" value="${gd('ex.watch.'+TODAY_S+'.'+f.key,'')||''}" placeholder="${f.placeholder}"
-            style="width:100%;background:transparent;border:none;color:#fff;font-family:monospace;font-size:15px;font-weight:700;outline:none;padding:0">
-          <div style="font-size:8px;color:rgba(255,255,255,.2);margin-top:2px;font-family:monospace">${f.unit||'count'}</div>
+          { key: 'move', label: 'Move', unit: 'cal', c: '#ff375f' },
+          { key: 'exercise', label: 'Exercise', unit: 'min', c: '#92e836' },
+          { key: 'stand', label: 'Stand', unit: 'hrs', c: '#1fd1f9' },
+          { key: 'steps', label: 'Steps', unit: '', c: 'var(--gold)' },
+        ].map(f => `<div style="background:rgba(255,255,255,.04);border:1px solid ${f.c}33;border-radius:8px;padding:8px 10px">
+          <div style="font-size:8px;color:${f.c};letter-spacing:1px;text-transform:uppercase;margin-bottom:5px;font-family:monospace">${f.label}${f.unit ? ' (' + f.unit + ')' : ''}</div>
+          <input id="watch-${f.key}" type="number" value="${gd('ex.watch.' + TODAY_S + '.' + f.key, '') || ''}" placeholder="0"
+            style="width:100%;background:transparent;border:none;color:#fff;font-family:monospace;font-size:16px;font-weight:700;outline:none;padding:0">
         </div>`).join('')}
       </div>
-      <button onclick="saveWatchData()" class="btn bg" style="width:100%;background:#ff375f;color:#fff;font-size:12px;letter-spacing:.5px">Save Watch Data</button>
+      <button onclick="saveWatchData()" class="btn bg" style="width:100%;background:#ff375f;color:#fff;font-size:12px">Save Watch Data</button>
     </div>
-
-    <!-- GOALS PANEL -->
-    ${gd('ui.watchGoalsOpen',false)?`
-    <div style="border-top:1px solid rgba(255,255,255,.06);padding-top:12px;margin-top:12px">
-      <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:10px;font-family:monospace">Daily goals</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
+ 
+    <!-- Goals panel -->
+    ${gd('ui.watchGoalsOpen', false) ? `<div style="border-top:1px solid rgba(255,255,255,.06);padding-top:12px">
+      <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:8px;font-family:monospace">Daily goals</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px">
         ${[
-          {key:'move',     label:'Move (cal)',  def:400,  c:'#ff375f'},
-          {key:'exercise', label:'Exer (min)',   def:30,   c:'#92e836'},
-          {key:'stand',    label:'Stand (hrs)',  def:12,   c:'#1fd1f9'},
-        ].map(g=>`
-        <div style="background:rgba(255,255,255,.04);border:1px solid ${g.c}33;border-radius:8px;padding:8px">
-          <div style="font-size:8px;color:${g.c};letter-spacing:1px;text-transform:uppercase;margin-bottom:5px;font-family:monospace">${g.label}</div>
-          <input id="wgoal-${g.key}" type="number" value="${gd('ex.watch.goals.'+g.key,g.def)}"
+          { key: 'move', label: 'Move (cal)', def: 400, c: '#ff375f' },
+          { key: 'exercise', label: 'Exer (min)', def: 30, c: '#92e836' },
+          { key: 'stand', label: 'Stand (hrs)', def: 12, c: '#1fd1f9' },
+        ].map(g => `<div style="background:rgba(255,255,255,.04);border:1px solid ${g.c}33;border-radius:8px;padding:8px">
+          <div style="font-size:8px;color:${g.c};letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;font-family:monospace">${g.label}</div>
+          <input id="wgoal-${g.key}" type="number" value="${gd('ex.watch.goals.' + g.key, g.def)}"
             style="width:100%;background:transparent;border:none;color:#fff;font-family:monospace;font-size:15px;font-weight:700;outline:none;padding:0">
         </div>`).join('')}
       </div>
       <button onclick="saveWatchGoals()" class="btn bg" style="width:100%;font-size:11px">Save Goals</button>
-    </div>`:''}
+    </div>` : ''}
   </div>
-
-
-  <div class="card">
-    <div class="ct">Log Session</div>
-    <div style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:12px" id="ex-type-btns">
-      ${['Resistance','Walk','Run','Yoga','Cycling','Other'].map((t,i)=>`<button onclick="selExType(this,'${t}')" data-et="${t}" style="padding:7px 12px;border-radius:7px;cursor:pointer;font-size:12px;border:1px solid var(--b1);background:${i===0?'rgba(74,126,224,.15)':'var(--s2)'};color:${i===0?'var(--blue)':'var(--t2)'};border-color:${i===0?'var(--blue)':'var(--b1)'};transition:all .15s">${t}</button>`).join('')}
+ 
+  <!-- Today's Prescription Card -->
+  <div class="card" style="border-left:3px solid ${sched.c};background:${sched.c}0a;margin-bottom:14px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+      <div style="font-size:22px">${sched.icon}</div>
+      <div style="flex:1">
+        <div style="font-size:15px;font-weight:600;color:${sched.c}">${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][todayDow]} — ${sched.label}</div>
+        <div style="font-size:11px;color:var(--t3)">${sched.theme}</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        ${sched.cycling > 0 ? `<div style="font-size:11px;font-family:monospace;color:var(--cyan)">🚴 ${sched.cycling} min cycling</div>` : ''}
+        <div style="font-size:11px;font-family:monospace;color:${sched.c}">💪 ${sched.strength} min strength</div>
+        <div style="font-size:11px;font-family:monospace;color:var(--gold)">= ${sched.cycling + sched.strength} min total</div>
+      </div>
     </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px">
-      <input id="ex-dur" class="inp" type="number" value="45" placeholder="Min" style="width:80px;font-family:monospace">
-      <input id="ex-date" class="inp" type="date" value="${TODAY_S}" style="width:145px">
-      <input id="ex-note" class="inp" type="text" placeholder="Note" style="flex:1">
-      <button class="btn bg" onclick="logEx()">Log</button>
+    <div style="padding:8px 12px;background:rgba(255,255,255,.03);border-radius:8px;border-left:2px solid ${sched.c}44">
+      <div style="font-size:11px;font-weight:600;color:${sched.c};margin-bottom:2px">${sched.strengthName}</div>
+      <div style="font-size:11px;color:var(--t3);line-height:1.5">${sched.why}</div>
     </div>
-    <div style="font-size:11px;color:var(--t3);margin-bottom:12px">📅 Backlogging? Change the date above.</div>
-    <div class="sl">This Month</div>
-    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:4px">${['M','T','W','T','F','S','S'].map(d=>`<div style="font-size:9px;color:var(--t3);text-align:center;padding-bottom:3px">${d}</div>`).join('')}</div>
-    <div id="ex-cal" style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px"></div>
-  </div>
-
-  <div class="card">
-    <div class="ct">Weekly Breakdown</div>
-    <div style="display:flex;align-items:flex-end;gap:8px;height:60px;margin-bottom:8px">
-      ${wkly.map((w,i)=>{const h=Math.max(4,(w.c/Math.max(1,Math.max(...wkly.map(x=>x.c))))*54);const isNow=i===3;return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px"><div style="font-size:11px;font-family:monospace;color:${isNow?'var(--gold)':'var(--t3)'}">${w.c}</div><div style="width:100%;height:${h}px;border-radius:3px 3px 0 0;background:${isNow?'var(--gold)':'var(--s4)'};border:1px solid ${isNow?'var(--gold)':'var(--b2)'}"></div></div>`;}).join('')}
-    </div>
-    <div style="display:flex;gap:8px">${wkly.map((w,i)=>`<div style="flex:1;text-align:center;font-size:9px;color:${i===3?'var(--gold)':'var(--t3)'}">${w.l}</div>`).join('')}</div>
-  </div>
-
-
-  <div class="card" style="background:linear-gradient(135deg,#0a0a18,#0d0d20);border-color:rgba(255,255,255,.08);margin-bottom:14px">
-    <div class="ct" style="color:rgba(255,255,255,.4);margin-bottom:10px">Weekly Ring Summary</div>
-    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:5px">
-      ${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d=>`<div style="font-size:8px;color:rgba(255,255,255,.3);text-align:center;font-family:monospace">${d}</div>`).join('')}
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:10px">
-      ${Array.from({length:7},(_,i)=>{
-        const d=new Date(getMon(TODAY)); d.setDate(d.getDate()+i);
-        const ds=d.toISOString().split('T')[0];
-        const dayLogs=logs.filter(l=>l.date===ds);
-        const hasEx=dayLogs.length>0;
-        const durMin=dayLogs.reduce((a,l)=>a+l.dur,0);
-        const durP=Math.min(100,Math.round(durMin/45*100));
-        const isToday=ds===TODAY_S;
-        const isFuture=d>TODAY;
-        const C2=2*Math.PI*11;
-        return `<div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 2px;border-radius:7px;background:${isToday?'rgba(201,150,90,.07)':'rgba(255,255,255,.02)'};border:1px solid ${isToday?'rgba(201,150,90,.25)':'rgba(255,255,255,.05)'}">
-          <svg width="28" height="28" viewBox="0 0 28 28">
-            <circle cx="14" cy="14" r="11" fill="none" stroke="rgba(255,61,95,.15)" stroke-width="4"/>
-            ${hasEx?`<circle cx="14" cy="14" r="11" fill="none" stroke="#ff375f" stroke-width="4" stroke-linecap="round" stroke-dasharray="${C2}" stroke-dashoffset="${C2*(1-durP/100)}" transform="rotate(-90 14 14)"/>`:''}
-            <text x="14" y="17" text-anchor="middle" fill="${hasEx?'#ff375f':'rgba(255,255,255,.2)'}" font-size="7" font-family="monospace">${isFuture?'·':hasEx?durMin:'—'}</text>
-          </svg>
-          <div style="font-size:8px;color:${isToday?'rgba(201,150,90,.8)':'rgba(255,255,255,.3)'};font-family:monospace">${d.getDate()}</div>
+    <!-- 7-day schedule strip -->
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-top:12px">
+      ${[1,2,3,4,5,6,0].map(dow => {
+        const s2 = WEEKLY_SCHEDULE[dow];
+        const isToday = dow === todayDow;
+        const labels = ['M','T','W','T','F','S','S'];
+        const idx = [1,2,3,4,5,6,0].indexOf(dow);
+        return `<div style="text-align:center;padding:6px 4px;border-radius:7px;background:${isToday ? s2.c + '1a' : 'transparent'};border:1px solid ${isToday ? s2.c + '55' : 'rgba(255,255,255,.06)'}">
+          <div style="font-size:9px;color:${isToday ? s2.c : 'var(--t3)'};font-family:monospace">${labels[idx]}</div>
+          <div style="font-size:13px;margin:2px 0">${s2.icon}</div>
+          <div style="font-size:8px;color:${isToday ? s2.c : 'var(--t3)'};line-height:1.2">${s2.cycling > 0 ? s2.cycling + '+' + s2.strength : s2.strength + 'm'}</div>
         </div>`;
       }).join('')}
     </div>
-    <div style="font-size:10px;color:rgba(255,255,255,.25);text-align:center;margin-bottom:14px">This week · ring = minutes toward 45-min goal</div>
-
-    <div class="ct" style="color:rgba(255,255,255,.4);margin-bottom:8px">Monthly Ring Calendar</div>
-    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:3px">
-      ${['M','T','W','T','F','S','S'].map(d=>`<div style="font-size:8px;color:rgba(255,255,255,.2);text-align:center;font-family:monospace">${d}</div>`).join('')}
+  </div>`;
+ 
+  // ── SECTION 2: Log a Session (multi-segment builder) ───────────────
+  const section2 = `
+  <!-- ── SECTION 2: Log a Session ── -->
+  <div class="card" style="border-color:rgba(74,170,120,.3);background:rgba(74,170,120,.03);margin-bottom:14px">
+    <div class="ct" style="color:var(--green)">💪 Log a Session
+      <span style="font-size:10px;color:var(--t3);font-weight:400">Add multiple activities</span>
     </div>
-    <div id="ex-ring-cal" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px"></div>
-  </div>
-
-    ${logs.length?`<div class="card">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-        <div class="ct" style="margin:0">Session Log <span style="font-size:10px;color:var(--t3);font-weight:400">${logs.length} total</span></div>
+ 
+    <!-- Date selector -->
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+      <div style="font-size:11px;color:var(--t3)">Date</div>
+      <input id="exlog-date" class="inp" type="date" value="${segDate}" style="flex:1;font-family:monospace"
+        onchange="sd('ui.exSegDate',this.value)">
+      <button onclick="sd('ui.exSegDate','${TODAY_S}');document.getElementById('exlog-date').value='${TODAY_S}'" style="padding:5px 10px;border-radius:6px;border:1px solid var(--b1);background:var(--s2);color:var(--t3);font-size:10px;cursor:pointer">Today</button>
+    </div>
+ 
+    <!-- Segment builder -->
+    <div id="ex-segments-list" style="margin-bottom:10px">
+      ${segments.length === 0 ? `<div id="ex-seg-empty" style="padding:12px;background:var(--s2);border-radius:8px;border:1px dashed var(--b1);text-align:center;font-size:12px;color:var(--t3)">
+        No segments added yet. Add a cycling block or strength workout below.
+      </div>` : segments.map((seg, i) => `
+      <div id="seg-row-${i}" style="display:flex;align-items:center;gap:8px;padding:9px 12px;background:var(--s2);border:1px solid var(--b1);border-radius:8px;margin-bottom:6px">
+        <div style="font-size:11px;padding:3px 8px;border-radius:5px;background:rgba(74,170,120,.15);border:1px solid rgba(74,170,120,.3);color:var(--green);font-family:monospace;white-space:nowrap">${seg.type}</div>
+        <div style="font-family:monospace;font-size:13px;font-weight:700;color:var(--gold)">${seg.dur}<span style="font-size:9px;font-weight:400;color:var(--t3)"> min</span></div>
+        ${seg.note ? `<div style="font-size:11px;color:var(--t3);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${seg.note}</div>` : '<div style="flex:1"></div>'}
+        <button onclick="removeExSegment(${i})" style="background:rgba(217,80,80,.1);border:1px solid rgba(217,80,80,.3);border-radius:5px;color:var(--red);font-size:10px;padding:3px 8px;cursor:pointer;flex-shrink:0">✕</button>
+      </div>`).join('')}
+    </div>
+ 
+    <!-- Add segment form -->
+    <div style="background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:12px;margin-bottom:10px">
+      <div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--t3);margin-bottom:8px">Add Activity</div>
+      <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px" id="ex-type-btns">
+        ${['Cycling 🚴', 'Resistance 💪', 'Walk 🚶', 'Run 🏃', 'Yoga 🧘', 'Core 🔥', 'HIIT ⚡', 'Other'].map((t, i) => {
+          const name = t.replace(/ [^\w]/g, '').trim();
+          return `<button onclick="selExType(this,'${t}')" data-et="${t}" style="padding:5px 10px;border-radius:6px;cursor:pointer;font-size:11px;border:1px solid ${i === 0 ? 'var(--cyan)' : 'var(--b1)'};background:${i === 0 ? 'rgba(56,178,200,.12)' : 'transparent'};color:${i === 0 ? 'var(--cyan)' : 'var(--t2)'};transition:all .15s">${t}</button>`;
+        }).join('')}
       </div>
-      <div id="ex-log-list">
-        ${logs.slice(0,20).map((l,i)=>`
-        <div id="exrow-${i}" style="border-bottom:1px solid var(--b1);padding:0">
-          <!-- view row -->
-          <div id="exrow-view-${i}" style="display:flex;align-items:center;gap:0;padding:7px 0">
-            <div style="flex:1.2;font-family:monospace;font-size:11px;color:var(--t3)">${l.date}</div>
-            <div style="flex:1.2;font-size:12px;color:var(--t2)">${l.type}</div>
-            <div style="flex:0.8;font-family:monospace;font-size:12px;color:var(--green);font-weight:600">${l.dur} min</div>
-            <div style="flex:1.5;font-size:11px;color:var(--t3)">${l.note||'—'}</div>
-            <div style="display:flex;gap:6px;flex-shrink:0">
-              <button onclick="exEditRow(${i})" style="background:rgba(74,126,224,.1);border:1px solid rgba(74,126,224,.3);border-radius:6px;color:var(--blue);font-size:10px;padding:3px 8px;cursor:pointer">Edit</button>
-              <button onclick="exDeleteRow(${i})" style="background:rgba(217,80,80,.1);border:1px solid rgba(217,80,80,.3);border-radius:6px;color:var(--red);font-size:10px;padding:3px 8px;cursor:pointer">Del</button>
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <div style="flex:0 0 80px">
+          <div style="font-size:10px;color:var(--t3);margin-bottom:4px">Minutes</div>
+          <input id="ex-seg-dur" class="inp" type="number" value="${sched.cycling > 0 ? sched.cycling : sched.strength}" placeholder="min" style="font-family:monospace;text-align:center">
+        </div>
+        <div style="flex:1">
+          <div style="font-size:10px;color:var(--t3);margin-bottom:4px">Note / Workout name</div>
+          <input id="ex-seg-note" class="inp" type="text" placeholder="e.g. Grindstone, TYR, Pull Day…">
+        </div>
+      </div>
+      <button onclick="addExSegment()" style="width:100%;padding:9px;border-radius:8px;border:1px solid rgba(74,170,120,.4);background:rgba(74,170,120,.1);color:var(--green);font-size:12px;cursor:pointer;font-weight:600">+ Add to session</button>
+    </div>
+ 
+    <!-- Session summary + Log button -->
+    ${segments.length > 0 ? `<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:rgba(74,170,120,.08);border:1px solid rgba(74,170,120,.25);border-radius:10px;margin-bottom:10px">
+      <div>
+        <div style="font-size:11px;color:var(--t3)">Session total</div>
+        <div style="font-family:monospace;font-size:24px;font-weight:700;color:var(--green)">${segments.reduce((a, s) => a + s.dur, 0)} <span style="font-size:12px;font-weight:400;color:var(--t3)">min</span></div>
+      </div>
+      <div style="flex:1">
+        ${segments.map(s => `<span style="font-size:10px;color:var(--t3);display:block">${s.type} · ${s.dur}min</span>`).join('')}
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <button onclick="logExMulti()" class="btn bg" style="font-size:12px">Log Session ✓</button>
+        <button onclick="clearExSegments()" style="padding:5px 10px;border-radius:6px;border:1px solid rgba(217,80,80,.3);background:rgba(217,80,80,.07);color:var(--red);font-size:10px;cursor:pointer">Clear</button>
+      </div>
+    </div>` : ''}
+ 
+    <!-- Quick-log today's schedule -->
+    <button onclick="quickLogSchedule()" style="width:100%;padding:9px;border-radius:8px;border:1px solid ${sched.c}44;background:${sched.c}0d;color:${sched.c};font-size:12px;cursor:pointer;font-family:monospace">
+      ⚡ Quick-log today: ${sched.label} (${sched.cycling + sched.strength} min)
+    </button>
+  </div>`;
+ 
+  // ── SECTION 3: Exercise Catalogue ─────────────────────────────────
+  const section3 = `
+  <!-- ── SECTION 3: Exercise Catalogue ── -->
+  <div class="card" style="margin-bottom:14px">
+    <div class="ct">📖 Exercise Catalogue
+      <span style="font-size:10px;color:var(--t3);font-weight:400">Tap workout → pre-fill logger</span>
+    </div>
+    ${EX_CATALOGUE.map(cat => {
+      const isOpen = catExpanded === cat.id;
+      return `<div style="border:1px solid ${isOpen ? cat.c + '44' : 'var(--b1)'};border-radius:10px;margin-bottom:7px;overflow:hidden;background:${isOpen ? cat.c + '08' : 'transparent'}">
+        <div onclick="toggleExCatalogCat('${cat.id}')" style="display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer">
+          <span style="font-size:16px">${cat.icon}</span>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:500;color:${isOpen ? cat.c : 'var(--t1)'}">${cat.label}</div>
+            <div style="font-size:10px;color:var(--t3)">${cat.day} · ${cat.workouts.length} workouts</div>
+          </div>
+          <div style="font-size:14px;color:var(--t3);transition:transform .2s;transform:rotate(${isOpen ? 90 : 0}deg)">›</div>
+        </div>
+        ${isOpen ? `<div style="padding:0 14px 14px;border-top:1px solid rgba(255,255,255,.05)">
+          ${cat.workouts.map((w, wi) => `
+          <div style="background:var(--s2);border:1px solid var(--b1);border-radius:9px;padding:11px 13px;margin-bottom:7px">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+              <div style="flex:1">
+                <div style="font-size:13px;font-weight:600;color:${cat.c}">${w.name}</div>
+                <div style="font-size:10px;color:var(--t3);font-family:monospace">${w.duration} min</div>
+              </div>
+              <button onclick="selectExWorkout('${cat.id}','${wi}')" style="padding:5px 12px;border-radius:6px;border:1px solid ${cat.c}55;background:${cat.c}15;color:${cat.c};font-size:11px;cursor:pointer;font-weight:600;flex-shrink:0">+ Add to session</button>
             </div>
+            <div style="display:flex;flex-wrap:wrap;gap:4px">
+              ${w.exercises.map(e => `<span style="font-size:10px;padding:3px 8px;border-radius:5px;background:var(--s3);border:1px solid var(--b1);color:var(--t2)">${e}</span>`).join('')}
+            </div>
+          </div>`).join('')}
+        </div>` : ''}
+      </div>`;
+    }).join('')}
+  </div>`;
+ 
+  // ── SECTION 4: Calendar + History ─────────────────────────────────
+  const now = new Date();
+  const yr = now.getFullYear();
+  const mo = now.getMonth();
+  const firstDay = new Date(yr, mo, 1);
+  const lastDay = new Date(yr, mo + 1, 0);
+  const offset = (firstDay.getDay() + 6) % 7; // Mon-start
+  const totalCells = offset + lastDay.getDate();
+  const cells = Math.ceil(totalCells / 7) * 7;
+ 
+  // Weekly breakdown (last 4 weeks)
+  const wkly = Array.from({ length: 4 }, (_, wi) => {
+    const wE2 = new Date(TODAY); wE2.setDate(TODAY.getDate() - wi * 7);
+    const wS2 = getMon(wE2);
+    const wLogs = logs.filter(l => { const d = new Date(l.date); return d >= wS2 && d <= wE2; });
+    return { l: wi === 0 ? 'This week' : wi + 'w ago', c: wLogs.length, m: wLogs.reduce((a, l) => a + l.dur, 0) };
+  }).reverse();
+ 
+  const maxWkSessions = Math.max(...wkly.map(w => w.c), 1);
+ 
+  // Selected day detail
+  const selDayLogs = histDay ? logs.filter(l => l.date === histDay) : [];
+ 
+  const section4 = `
+  <!-- ── SECTION 4: Calendar + History ── -->
+  <!-- Stats row -->
+  <div class="g3" style="margin-bottom:14px">
+    <div class="tile"><div class="tl">This Week</div><div class="tv" style="color:var(--green)">${wkLogs.length}</div><div class="ts">/ ${weeklyTarget} target</div></div>
+    <div class="tile"><div class="tl">All Sessions</div><div class="tv" style="color:var(--blue)">${logs.length}</div><div class="ts">since May 9</div></div>
+    <div class="tile"><div class="tl">Streak</div><div class="tv" style="color:var(--cyan)">${streak}</div><div class="ts">days</div></div>
+  </div>
+ 
+  <!-- Activity rings summary - consistency / duration / streak -->
+  <div class="card" style="background:linear-gradient(135deg,#08080f,#0d0d1a);border-color:rgba(255,255,255,.07);margin-bottom:14px">
+    <div class="ct" style="color:rgba(255,255,255,.4)">Overall Progress Rings</div>
+    <div style="display:flex;align-items:center;gap:0">
+      <div style="position:relative;width:130px;height:130px;flex-shrink:0">
+        <svg width="130" height="130" viewBox="0 0 130 130">
+          ${[
+            { pct: consistency, r: 52, c: '#ff375f' },
+            { pct: durPct, r: 40, c: '#92e836' },
+            { pct: streakPct, r: 28, c: '#1fd1f9' },
+          ].map(ring => {
+            const circ = 2 * Math.PI * ring.r;
+            const off = circ * (1 - ring.pct / 100);
+            return `<circle cx="65" cy="65" r="${ring.r}" fill="none" stroke="${ring.c}" stroke-width="10" opacity=".15"/>
+            ${ring.pct > 0 ? `<circle cx="65" cy="65" r="${ring.r}" fill="none" stroke="${ring.c}" stroke-width="10" stroke-linecap="round" stroke-dasharray="${circ}" stroke-dashoffset="${off}" transform="rotate(-90 65 65)" style="transition:stroke-dashoffset 1.2s ease"/>` : ''}`;
+          }).join('')}
+          <text x="65" y="59" text-anchor="middle" fill="rgba(255,255,255,.3)" font-size="8" letter-spacing="1" font-family="monospace">ACTIVITY</text>
+          <text x="65" y="74" text-anchor="middle" fill="#fff" font-size="19" font-weight="700" font-family="monospace">${consistency}%</text>
+          <text x="65" y="86" text-anchor="middle" fill="rgba(255,255,255,.25)" font-size="8" font-family="monospace">consistency</text>
+        </svg>
+      </div>
+      <div style="flex:1;padding-left:14px">
+        ${[
+          { l: 'Consistency', v: consistency, c: '#ff375f', d: `${wkLogs.length} sessions / ${weeklyTarget} this week` },
+          { l: 'Duration', v: durPct, c: '#92e836', d: `${todayMin} / 45 min today` },
+          { l: 'Streak', v: streakPct, c: '#1fd1f9', d: `${streak} consecutive days` },
+        ].map(ring => `<div style="margin-bottom:12px">
+          <div style="display:flex;align-items:center;gap:7px;margin-bottom:4px">
+            <div style="width:10px;height:10px;border-radius:50%;background:${ring.c}"></div>
+            <span style="font-size:11px;color:rgba(255,255,255,.7);font-weight:600">${ring.l}</span>
+            <span style="font-family:monospace;font-size:12px;color:${ring.c};margin-left:auto;font-weight:700">${ring.v}%</span>
           </div>
-          <!-- edit row (hidden) -->
-          <div id="exrow-edit-${i}" style="display:none;padding:8px 0 10px;gap:6px;flex-wrap:wrap;align-items:center">
-            <input id="exedit-date-${i}" type="date" value="${l.date}" style="background:var(--s2);border:1px solid var(--b2);border-radius:6px;color:var(--t1);font-family:monospace;font-size:11px;padding:5px 8px;width:130px">
-            <select id="exedit-type-${i}" style="background:var(--s2);border:1px solid var(--b2);border-radius:6px;color:var(--t1);font-size:11px;padding:5px 8px">
-              ${['Resistance','Walk','Run','Yoga','Cycling','Other'].map(t=>`<option value="${t}"${t===l.type?' selected':''}>${t}</option>`).join('')}
-            </select>
-            <input id="exedit-dur-${i}" type="number" value="${l.dur}" placeholder="min" style="background:var(--s2);border:1px solid var(--b2);border-radius:6px;color:var(--t1);font-family:monospace;font-size:11px;padding:5px 8px;width:70px">
-            <input id="exedit-note-${i}" type="text" value="${l.note||''}" placeholder="Note" style="background:var(--s2);border:1px solid var(--b2);border-radius:6px;color:var(--t1);font-size:11px;padding:5px 8px;flex:1;min-width:100px">
-            <button onclick="exSaveRow(${i})" style="background:rgba(58,168,152,.15);border:1px solid rgba(58,168,152,.4);border-radius:6px;color:var(--teal);font-size:10px;padding:4px 10px;cursor:pointer;font-weight:600">Save</button>
-            <button onclick="exCancelRow(${i})" style="background:rgba(255,255,255,.05);border:1px solid var(--b1);border-radius:6px;color:var(--t3);font-size:10px;padding:4px 10px;cursor:pointer">Cancel</button>
+          <div style="height:4px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden">
+            <div style="height:100%;width:${ring.v}%;background:${ring.c};border-radius:2px;transition:width 1.2s ease"></div>
           </div>
+          <div style="font-size:10px;color:rgba(255,255,255,.3);margin-top:2px">${ring.d}</div>
         </div>`).join('')}
       </div>
-    </div>`:''}`;
+    </div>
+  </div>
+ 
+  <!-- Weekly bar chart -->
+  <div class="card" style="margin-bottom:14px">
+    <div class="ct">Weekly Breakdown</div>
+    <div style="display:flex;align-items:flex-end;gap:8px;height:70px;margin-bottom:8px">
+      ${wkly.map((w, i) => {
+        const h = Math.max(4, Math.round(w.c / maxWkSessions * 64));
+        const isNow = i === 3;
+        return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">
+          <div style="font-size:11px;font-family:monospace;color:${isNow ? 'var(--gold)' : 'var(--t3)'}">${w.c}</div>
+          <div style="width:100%;height:${h}px;border-radius:4px 4px 0 0;background:${isNow ? 'var(--gold)' : 'var(--s4)'};border:1px solid ${isNow ? 'var(--gold)' : 'var(--b2)'}"></div>
+          <div style="font-size:9px;color:${isNow ? 'var(--gold)' : 'var(--t3)'};">${w.m}m</div>
+        </div>`;
+      }).join('')}
+    </div>
+    <div style="display:flex;gap:8px">${wkly.map((w, i) => `<div style="flex:1;text-align:center;font-size:9px;color:${i === 3 ? 'var(--gold)' : 'var(--t3)'}">${w.l}</div>`).join('')}</div>
+  </div>
+ 
+  <!-- Calendar -->
+  <div class="card" style="margin-bottom:14px">
+    <div class="ct">${now.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}</div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:5px">
+      ${['M','T','W','T','F','S','S'].map(d => `<div style="font-size:9px;color:var(--t3);text-align:center;padding-bottom:2px">${d}</div>`).join('')}
+    </div>
+    <div id="ex-cal" style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:10px"></div>
+ 
+    <!-- Selected day detail -->
+    ${histDay ? `<div style="padding:12px;background:var(--s2);border-radius:9px;border:1px solid var(--b1)">
+      <div style="font-size:11px;font-weight:600;color:var(--gl);margin-bottom:8px">📅 ${histDay}</div>
+      ${selDayLogs.length ? selDayLogs.map(l => `<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--b1)">
+        <div style="font-size:12px;font-weight:500;color:var(--blue)">${l.type}</div>
+        <div style="font-family:monospace;font-size:13px;font-weight:700;color:var(--green)">${l.dur} min</div>
+        <div style="font-size:11px;color:var(--t3);flex:1">${l.note || '—'}</div>
+      </div>`).join('') : '<div style="font-size:12px;color:var(--t3)">No sessions on this day.</div>'}
+    </div>` : '<div style="font-size:11px;color:var(--t3);text-align:center;padding:6px 0">Tap a day to see session detail</div>'}
+  </div>
+ 
+  <!-- Session log table -->
+  ${logs.length ? `<div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div class="ct" style="margin:0">Session Log <span style="font-size:10px;color:var(--t3);font-weight:400">${logs.length} total</span></div>
+    </div>
+    ${logs.slice(0, 25).map((l, i) => `
+    <div id="exrow-${i}" style="border-bottom:1px solid var(--b1);padding:0">
+      <div id="exrow-view-${i}" style="display:flex;align-items:center;gap:0;padding:7px 0">
+        <div style="flex:1.2;font-family:monospace;font-size:11px;color:var(--t3)">${l.date}</div>
+        <div style="flex:1.2;font-size:12px;color:var(--t2)">${l.type}</div>
+        <div style="flex:0.8;font-family:monospace;font-size:12px;color:var(--green);font-weight:600">${l.dur} min</div>
+        <div style="flex:1.5;font-size:11px;color:var(--t3)">${l.note || '—'}</div>
+        <div style="display:flex;gap:5px;flex-shrink:0">
+          <button onclick="exEditRow(${i})" style="background:rgba(74,126,224,.1);border:1px solid rgba(74,126,224,.3);border-radius:5px;color:var(--blue);font-size:10px;padding:3px 7px;cursor:pointer">Edit</button>
+          <button onclick="exDeleteRow(${i})" style="background:rgba(217,80,80,.1);border:1px solid rgba(217,80,80,.3);border-radius:5px;color:var(--red);font-size:10px;padding:3px 7px;cursor:pointer">Del</button>
+        </div>
+      </div>
+      <div id="exrow-edit-${i}" style="display:none;padding:8px 0 10px;gap:6px;flex-wrap:wrap;align-items:center">
+        <input id="exedit-date-${i}" type="date" value="${l.date}" style="background:var(--s2);border:1px solid var(--b2);border-radius:6px;color:var(--t1);font-family:monospace;font-size:11px;padding:5px 8px;width:130px">
+        <select id="exedit-type-${i}" style="background:var(--s2);border:1px solid var(--b2);border-radius:6px;color:var(--t1);font-size:11px;padding:5px 8px">
+          ${['Resistance','Cycling','Walk','Run','Yoga','Core','HIIT','Other'].map(t => `<option value="${t}"${t === l.type ? ' selected' : ''}>${t}</option>`).join('')}
+        </select>
+        <input id="exedit-dur-${i}" type="number" value="${l.dur}" placeholder="min" style="background:var(--s2);border:1px solid var(--b2);border-radius:6px;color:var(--t1);font-family:monospace;font-size:11px;padding:5px 8px;width:70px">
+        <input id="exedit-note-${i}" type="text" value="${l.note || ''}" placeholder="Note" style="background:var(--s2);border:1px solid var(--b2);border-radius:6px;color:var(--t1);font-size:11px;padding:5px 8px;flex:1;min-width:100px">
+        <button onclick="exSaveRow(${i})" style="background:rgba(58,168,152,.15);border:1px solid rgba(58,168,152,.4);border-radius:6px;color:var(--teal);font-size:10px;padding:4px 10px;cursor:pointer;font-weight:600">Save</button>
+        <button onclick="exCancelRow(${i})" style="background:rgba(255,255,255,.05);border:1px solid var(--b1);border-radius:6px;color:var(--t3);font-size:10px;padding:4px 10px;cursor:pointer">Cancel</button>
+      </div>
+    </div>`).join('')}
+  </div>` : ''}`;
+ 
+  return section1 + section2 + section3 + section4;
+}
+ 
+// ═══════════════════════════════════════════════════════════════════
+// NEW HELPER FUNCTIONS — add these alongside the existing helpers
+// ═══════════════════════════════════════════════════════════════════
+ 
+function toggleExCatalogCat(id) {
+  sd('ui.exCatOpen', gd('ui.exCatOpen', '') === id ? '' : id);
+  switchTab('exercise');
+}
+ 
+function addExSegment() {
+  const typeBtn = document.querySelector('[data-et].btn-selected, [data-et][style*="var(--cyan)"], [data-et][style*="var(--blue)"]');
+  // Get currently highlighted type
+  let type = _exType || 'Cycling 🚴';
+  const dur = parseInt(document.getElementById('ex-seg-dur')?.value || 25);
+  const note = document.getElementById('ex-seg-note')?.value?.trim() || '';
+  if (!dur) { toast('Enter duration first'); return; }
+  const segs = gd('ui.exSegments', []);
+  segs.push({ type, dur, note });
+  sd('ui.exSegments', segs);
+  document.getElementById('ex-seg-note').value = '';
+  switchTab('exercise');
+}
+ 
+function removeExSegment(i) {
+  const segs = gd('ui.exSegments', []);
+  segs.splice(i, 1);
+  sd('ui.exSegments', segs);
+  switchTab('exercise');
+}
+ 
+function clearExSegments() {
+  sd('ui.exSegments', []);
+  switchTab('exercise');
+}
+ 
+function logExMulti() {
+  const segs = gd('ui.exSegments', []);
+  if (!segs.length) { toast('Add activities first'); return; }
+  const date = gd('ui.exSegDate', TODAY_S);
+  const logs = gd('ex.logs', []);
+  // Log each segment as a separate entry (preserves existing log structure)
+  segs.forEach(seg => {
+    logs.unshift({ date, type: seg.type, dur: seg.dur, note: seg.note || '' });
+  });
+  sd('ex.logs', logs);
+  sd('ui.exSegments', []);
+  const totalMin = segs.reduce((a, s) => a + s.dur, 0);
+  toast(`💪 Session logged — ${segs.length} activities · ${totalMin} min`);
+  renderAll();
+  switchTab('exercise');
+}
+ 
+function selectExWorkout(catId, workoutIdx) {
+  const cat = EX_CATALOGUE.find(c => c.id === catId);
+  if (!cat) return;
+  const w = cat.workouts[parseInt(workoutIdx)];
+  if (!w) return;
+  // Pre-fill the segment builder
+  _exType = cat.label === 'Cycling / Cardio' ? 'Cycling 🚴' : 'Resistance 💪';
+  const durEl = document.getElementById('ex-seg-dur');
+  const noteEl = document.getElementById('ex-seg-note');
+  if (durEl) durEl.value = w.duration;
+  if (noteEl) noteEl.value = w.name;
+  // Scroll to log section — add to segments directly
+  const segs = gd('ui.exSegments', []);
+  segs.push({ type: _exType, dur: w.duration, note: w.name });
+  sd('ui.exSegments', segs);
+  sd('ui.exCatOpen', ''); // close catalogue
+  toast(`✓ ${w.name} added to session`);
+  switchTab('exercise');
+}
+ 
+function quickLogSchedule() {
+  const todayDow = TODAY.getDay();
+  const sched = WEEKLY_SCHEDULE[todayDow];
+  const logs = gd('ex.logs', []);
+  if (sched.cycling > 0) {
+    logs.unshift({ date: TODAY_S, type: 'Cycling 🚴', dur: sched.cycling, note: 'Cycling block' });
+  }
+  logs.unshift({ date: TODAY_S, type: 'Resistance 💪', dur: sched.strength, note: sched.strengthName });
+  sd('ex.logs', logs);
+  toast(`⚡ ${sched.label} logged — ${sched.cycling + sched.strength} min total`);
+  renderAll();
+  switchTab('exercise');
+}
+ 
+// ── Updated renderExCal to support tap-to-select day ────────────────
+function renderExCal() {
+  const logs = gd('ex.logs', []);
+  const now = new Date();
+  const yr = now.getFullYear();
+  const mo = now.getMonth();
+  const firstDay = new Date(yr, mo, 1);
+  const lastDay = new Date(yr, mo + 1, 0);
+  const offset = (firstDay.getDay() + 6) % 7;
+  const totalCells = offset + lastDay.getDate();
+  const cells = Math.ceil(totalCells / 7) * 7;
+  const histDay = gd('ui.exHistDay', '');
+ 
+  const cal = document.getElementById('ex-cal');
+  if (!cal) return;
+  let html = '';
+  for (let i = 0; i < cells; i++) {
+    if (i < offset) { html += `<div></div>`; continue; }
+    const day = i - offset + 1;
+    if (day > lastDay.getDate()) { html += `<div></div>`; continue; }
+    const ds = `${yr}-${String(mo + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const dayLogs = logs.filter(l => l.date === ds);
+    const dur = dayLogs.reduce((a, l) => a + l.dur, 0);
+    const isToday = ds === TODAY_S;
+    const isSelected = ds === histDay;
+    const bg = isSelected ? 'rgba(74,170,120,.2)' : dur > 0 ? `rgba(74,126,224,${0.1 + Math.min(0.3, dur / 200)})` : 'rgba(255,255,255,.03)';
+    const border = isSelected ? 'var(--green)' : isToday ? 'var(--blue)' : dur > 0 ? 'rgba(74,126,224,.4)' : 'rgba(255,255,255,.06)';
+    html += `<div onclick="sd('ui.exHistDay','${isSelected ? '' : ds}');renderExCal()" style="aspect-ratio:1;border-radius:5px;background:${bg};border:1px solid ${border};display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;position:relative">
+      <div style="font-size:9px;font-family:monospace;color:${isSelected ? 'var(--green)' : dur > 0 ? '#fff' : 'rgba(255,255,255,.2)'}">${day}</div>
+      ${dur > 0 ? `<div style="font-size:7px;font-family:monospace;color:${isSelected ? 'var(--green)' : 'rgba(74,126,224,.8)'}">${dur}m</div>` : ''}
+    </div>`;
+  }
+  cal.innerHTML = html;
 }function bIntimacy(){
   const stps=gd('int.steps',{});
   const doneSt=STEPS.filter(s=>stps[s.id]&&stps[s.id].done);
