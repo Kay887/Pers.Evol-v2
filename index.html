@@ -1492,7 +1492,7 @@ function bDaily(){
     ${chartD.length>1?`<div style="display:flex;align-items:flex-end;gap:3px;height:52px;margin-bottom:4px">${chartD.map(w=>{const h=Math.max(4,((w.val-minW)/(maxW-minW))*50+4);return `<div style="flex:1;height:${h}px;border-radius:3px 3px 0 0;background:var(--blue);opacity:.75" title="${w.val}kg · ${w.date}"></div>`;}).join('')}</div><div style="font-size:10px;color:var(--t3);text-align:center;margin-bottom:10px">Weight trend</div>`:''}
     ${logs.length?`<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr>${['Date','Weight','Δ','Note'].map(h=>`<th style="text-align:left;padding:6px 10px;border-bottom:1px solid var(--b1);color:var(--t3);font-size:10px;letter-spacing:1.2px;font-weight:500">${h}</th>`).join('')}</tr></thead><tbody>${logs.slice(0,12).map((w,i)=>{const prev=logs[i+1];const d=prev?(w.val-prev.val).toFixed(1):null;return `<tr><td style="padding:7px 10px;border-bottom:1px solid var(--b1);color:var(--t3);font-family:monospace;font-size:11px">${w.date}</td><td style="padding:7px 10px;border-bottom:1px solid var(--b1);font-family:monospace">${w.val} kg</td><td style="padding:7px 10px;border-bottom:1px solid var(--b1);font-family:monospace;color:${d===null?'var(--t3)':parseFloat(d)<=0?'var(--green)':'var(--orange)'}">${d!==null?(parseFloat(d)>0?'+':'')+d:'—'}</td><td style="padding:7px 10px;border-bottom:1px solid var(--b1);color:var(--t3);font-size:11px">${w.note||'—'}</td></tr>`;}).join('')}</tbody></table>`:'<div style="text-align:center;color:var(--t3);padding:18px;font-size:13px">Log your first reading. Weigh every Monday morning.</div>'}
   </div>`;
-}function bExercise(){
+}
   const WEEKLY_SCHEDULE = {
   1: { // Monday
     label: 'Upper Pull',
