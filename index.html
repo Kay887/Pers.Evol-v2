@@ -1840,9 +1840,18 @@ function bExercise() {
       </div>
     </div>
  
-    <!-- Log rings input -->
+   <!-- Log rings input -->
     <div style="border-top:1px solid rgba(255,255,255,.06);padding-top:12px;margin-bottom:10px">
-      <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:8px;font-family:monospace">Log today's rings</div>
+      <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:8px;font-family:monospace">Log rings</div>
+      <div style="display:flex;gap:5px;margin-bottom:10px">
+        ${[0,1,2].map(n=>{
+          const d=new Date(TODAY); d.setDate(d.getDate()-n);
+          const ds=d.toISOString().split('T')[0];
+          const lbl=n===0?'Today':n===1?'Yesterday':'2 days ago';
+          const sel=gd('ui.watchLogDate',TODAY_S)===ds;
+          return `<button onclick="sd('ui.watchLogDate','${ds}');switchTab('exercise')" style="flex:1;padding:6px 4px;border-radius:7px;border:1px solid ${sel?'rgba(255,61,95,.6)':'rgba(255,255,255,.1)'};background:${sel?'rgba(255,61,95,.12)':'rgba(255,255,255,.04)'};color:${sel?'#ff375f':'rgba(255,255,255,.4)'};font-size:10px;font-family:monospace;cursor:pointer">${lbl}<div style="font-size:8px;opacity:.6;margin-top:1px">${ds.slice(5)}</div></button>`;
+        }).join('')}
+      </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px">
         ${[
           { key: 'move', label: 'Move', unit: 'cal', c: '#ff375f' },
@@ -1851,7 +1860,7 @@ function bExercise() {
           { key: 'steps', label: 'Steps', unit: '', c: 'var(--gold)' },
         ].map(f => `<div style="background:rgba(255,255,255,.04);border:1px solid ${f.c}33;border-radius:8px;padding:8px 10px">
           <div style="font-size:8px;color:${f.c};letter-spacing:1px;text-transform:uppercase;margin-bottom:5px;font-family:monospace">${f.label}${f.unit ? ' (' + f.unit + ')' : ''}</div>
-          <input id="watch-${f.key}" type="number" value="${gd('ex.watch.' + TODAY_S + '.' + f.key, '') || ''}" placeholder="0"
+          <input id="watch-${f.key}" type="number" value="${gd('ex.watch.' + gd('ui.watchLogDate',TODAY_S) + '.' + f.key, '') || ''}" placeholder="0"
             style="width:100%;background:transparent;border:none;color:#fff;font-family:monospace;font-size:16px;font-weight:700;outline:none;padding:0">
         </div>`).join('')}
       </div>
@@ -4191,11 +4200,12 @@ function togglePastEntries(){sd('ui.pastEntriesOpen',!gd('ui.pastEntriesOpen',tr
 function viewJournalDate(d){sd('ui.journalViewDate',d);switchTab('journal');}
 function saveWatchData(){
   const keys=['move','exercise','stand','steps'];
+  const watchDate=gd('ui.watchLogDate',TODAY_S);
   keys.forEach(k=>{
     const el=document.getElementById('watch-'+k);
-    if(el&&el.value!=='') sd('ex.watch.'+TODAY_S+'.'+k,parseFloat(el.value)||0);
+    if(el&&el.value!=='') sd('ex.watch.'+watchDate+'.'+k,parseFloat(el.value)||0);
   });
-  toast('⌚ Watch data saved');
+  toast('⌚ Watch data saved · '+watchDate);
   switchTab('exercise');
 }
 function toggleWatchGoals(){sd('ui.watchGoalsOpen',!gd('ui.watchGoalsOpen',false));switchTab('exercise');}
@@ -4649,19 +4659,13 @@ function initPIN(){
 window.addEventListener('DOMContentLoaded',()=>{
   initPIN();
   S=lsGet('pev2',{});
-  // Recover data logged under wrong date (timezone shift)
+  // Archive previous day into history, then always reset to clean state
   if(S.daily && S.daily.date && S.daily.date !== TODAY_S) {
     const yesterday = S.daily;
     if(!S.dailyHistory) S.dailyHistory = {};
     S.dailyHistory[yesterday.date] = yesterday;
-    const loggedDate = new Date(yesterday.date + 'T00:00:00');
-    const todayDate  = new Date(TODAY_S + 'T00:00:00');
-    const diffDays   = Math.round((todayDate - loggedDate) / 86400000);
-    if(diffDays <= 1) {
-      S.daily = { ...yesterday, date: TODAY_S };
-    } else {
-      S.daily = { date: TODAY_S, tasks:{}, meds:{}, water:0, subR:0, subM:0 };
-    }
+    // Always reset — never carry task/med completion forward
+    S.daily = { date: TODAY_S, tasks:{}, meds:{}, water:0, subR:0, subM:0 };
     lsSet('pev2', S);
   }
   ensureDaily();
