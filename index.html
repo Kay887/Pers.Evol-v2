@@ -296,7 +296,7 @@ textarea{resize:vertical}
 // ═══════════════ CONFIG ═══════════════
 const SUPA_URL = 'https://alxtlzxbjpxxdrpohnvb.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFseHRsenhianB4eGRycG9obnZiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0NTM3NTUsImV4cCI6MjA5MDAyOTc1NX0.7B41JEAgwt0LmubRQoq4csfTdH4J_I2DXUzHe7iGZkw';
-const SUPA_ROW = 'pers_evol_v2';
+const SUPA_ROW = 'pers_evol_clean_v1';
 const SUPA_EP  = SUPA_URL + '/rest/v1/tracker_data';
 const ANTHROPIC_KEY = '';
 
@@ -310,25 +310,61 @@ const TIME_PCT = Math.min(100, Math.round((DAY_NUM-1)/TOTAL_DAYS*100));
 
 
 // ═══════════════ STATE ═══════════════
-let S = {};
+let S = createDefaultState();
 let _syncing = false;
 
-function lsGet(k,fb){ try{ const v=localStorage.getItem(k); return v!=null?JSON.parse(v):fb; }catch(e){ return fb; }}
-function lsSet(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
+function createDefaultState(){
+
+  return {
+
+    daily:{},
+
+    ui:{},
+
+    goals:{},
+
+    journal:{},
+
+    lastUpdated:0
+
+  };
+}
 
 function gd(path,fb){
-  const parts=path.split('.');
-  let o=S;
-  for(const p of parts){ if(o==null||o===undefined) return fb; o=o[p]; }
-  return o===undefined?fb:o;
+
+  const parts = path.split('.');
+  let o = S;
+
+  for(const p of parts){
+
+    if(o == null || o === undefined){
+      return fb;
+    }
+
+    o = o[p];
+  }
+
+  return o === undefined ? fb : o;
 }
+
 function sd(path,val){
-  const parts=path.split('.');
-  let o=S;
-  for(let i=0;i<parts.length-1;i++){ if(!o[parts[i]]||typeof o[parts[i]]!=='object') o[parts[i]]={}; o=o[parts[i]]; }
-  o[parts[parts.length-1]]=val;
-  S.lastUpdated=Date.now();
-  lsSet('pev2',S);
+
+  const parts = path.split('.');
+  let o = S;
+
+  for(let i=0;i<parts.length-1;i++){
+
+    if(!o[parts[i]] || typeof o[parts[i]] !== 'object'){
+      o[parts[i]] = {};
+    }
+
+    o = o[parts[i]];
+  }
+
+  o[parts[parts.length-1]] = val;
+
+  S.lastUpdated = Date.now();
+
   schedSave();
 }
 function ensureDaily(){
@@ -352,7 +388,7 @@ async function cloudLoad(){
     if(!rows.length){await cloudSave();_syncing=false;return;}
     const cloud=JSON.parse(rows[0].data||'{}');
     const cTs=cloud.lastUpdated||0, lTs=S.lastUpdated||0;
-   if(cTs>lTs){S=cloud;lsSet('pev2',S);ensureDaily();if(S.ui&&S.ui.ovDate&&S.ui.ovDate!==TODAY_S){S.ui.ovDate=TODAY_S;lsSet('pev2',S);}renderAll();syncDot('⇄ '+new Date().toLocaleTimeString(),'var(--green)');}
+   if(Object.keys(cloud).length){S=cloud; ensureDaily();if(S.ui&&S.ui.ovDate&&S.ui.ovDate!==TODAY_S){S.ui.ovDate=TODAY_S;}renderAll();syncDot('⇄ '+new Date().toLocaleTimeString(),'var(--green)');}
     else syncDot('✓ '+new Date().toLocaleTimeString(),'var(--t3)');
   }catch(e){syncDot('○','var(--t3)');}
   _syncing=false;
@@ -363,7 +399,6 @@ function schedSave(){snapshotDaily();clearTimeout(_saveTimer);_saveTimer=setTime
 
 async function cloudSave(){
   S.lastUpdated=Date.now();
-  lsSet('pev2',S);
   syncDot('↑','var(--gold)');
   document.getElementById('sync-bar').className='active';
   try{
@@ -1031,7 +1066,6 @@ function snapshotDaily(){
     date:TODAY_S
   };
   // Write directly to S — no sd() call to avoid infinite loop
-  lsSet('pev2',S);
 }
 function showPanel(id){
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
@@ -3911,7 +3945,7 @@ function toggleWPSec(wpId,k){sd('wp.'+wpId+'.'+k,!gd('wp.'+wpId+'.'+k,false));sw
 function setSprintSt(pId,k,v){sd('prod.'+pId+'.'+k,v);switchTab('products');}
 
 function saveJp(pid,val){sd('journal.'+TODAY_S+'.'+pid,val);}
-function saveJournalEntry(){S.lastUpdated=Date.now();lsSet('pev2',S);schedSave();toast('📖 Journal saved');switchTab('journal');}
+function saveJournalEntry(){S.lastUpdated=Date.now(); schedSave();toast('📖 Journal saved');switchTab('journal');}
 function saveCh(val){sd('journal.ch.'+TODAY_S,val);}
 function revealCh(){const v=gd('ui.journalViewDate','');sd('journal.chalRevealed.'+(v||TODAY_S),true);switchTab('journal');}
 
@@ -4666,12 +4700,10 @@ window.addEventListener('DOMContentLoaded',()=>{
     S.dailyHistory[yesterday.date] = yesterday;
     // Always reset — never carry task/med completion forward
     S.daily = { date: TODAY_S, tasks:{}, meds:{}, water:0, subR:0, subM:0 };
-    lsSet('pev2', S);
   }
   ensureDaily();
   if(!S.ui) S.ui={};
   S.ui.ovDate = TODAY_S;
-  lsSet('pev2',S);
   renderAll();
   switchTab('overview');
   setTimeout(cloudLoad,900);
