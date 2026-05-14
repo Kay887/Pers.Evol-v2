@@ -379,20 +379,93 @@ function getMon(d){ const m=new Date(d); m.setDate(d.getDate()-monIdx(d)); retur
 function sHeaders(){ return {'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Prefer':'resolution=merge-duplicates'}; }
 function syncDot(msg,c){ const el=document.getElementById('sync-dot'); if(el){el.textContent=msg;el.style.color=c||'var(--t3)';} }
 
+```javascript
 async function cloudLoad(){
-  if(_syncing) return; _syncing=true;
+  if(_syncing) return;
+  _syncing = true;
   try{
-    const r=await fetch(SUPA_EP+'?id=eq.'+SUPA_ROW+'&select=data,updated_at',{headers:sHeaders()});
-    if(!r.ok){_syncing=false;return;}
-    const rows=await r.json();
-    if(!rows.length){await cloudSave();_syncing=false;return;}
-    const cloud=JSON.parse(rows[0].data||'{}');
-    const cTs=cloud.lastUpdated||0, lTs=S.lastUpdated||0;
-   if(Object.keys(cloud).length){S=cloud; ensureDaily();if(S.ui&&S.ui.ovDate&&S.ui.ovDate!==TODAY_S){S.ui.ovDate=TODAY_S;}renderAll();syncDot('⇄ '+new Date().toLocaleTimeString(),'var(--green)');}
-    else syncDot('✓ '+new Date().toLocaleTimeString(),'var(--t3)');
-  }catch(e){syncDot('○','var(--t3)');}
-  _syncing=false;
+    const r = await fetch(
+      SUPA_EP + '?id=eq.' + SUPA_ROW + '&select=data,updated_at',
+      {
+        headers:sHeaders()
+      }
+    );
+
+    if(!r.ok){
+console.error('Supabase fetch failed:', r.status);
+ _syncing = false;
+return;
+    }
+
+    const rows = await r.json();
+
+    // First run
+    if(!rows.length){
+
+      S = createDefaultState();
+
+      await cloudSave();
+
+      renderAll();
+
+      _syncing = false;
+
+      return;
+    }
+
+    let cloud = {};
+
+    try{
+
+      cloud = JSON.parse(rows[0].data || '{}');
+
+    }catch(e){
+
+      console.error('Cloud JSON parse failed', e);
+
+      cloud = {};
+    }
+
+    // Safe fallback
+    S = cloud || {};
+
+    // Structural recovery
+    if(!S.daily)   S.daily = {};
+    if(!S.ui)      S.ui = {};
+    if(!S.goals)   S.goals = {};
+    if(!S.journal) S.journal = {};
+
+    if(!S.daily.tasks) S.daily.tasks = {};
+    if(!S.daily.meds)  S.daily.meds = {};
+
+    ensureDaily();
+
+    if(S.ui.ovDate !== TODAY_S){
+      S.ui.ovDate = TODAY_S;
+    }
+
+    renderAll();
+
+    syncDot(
+      '⇄ ' + new Date().toLocaleTimeString(),
+      'var(--green)'
+    );
+
+  }catch(e){
+
+    console.error('cloudLoad failed:', e);
+
+    S = createDefaultState();
+
+    renderAll();
+
+    syncDot('○','var(--red)');
+  }
+
+  _syncing = false;
 }
+```
+
 
 let _saveTimer=null;
 function schedSave(){snapshotDaily();clearTimeout(_saveTimer);_saveTimer=setTimeout(cloudSave,1500);}
@@ -4710,5 +4783,24 @@ window.addEventListener('DOMContentLoaded',()=>{
   setInterval(cloudLoad,5000);
   setInterval(()=>{if(curTab==='exercise')renderExCal();},3000);
 });
+  ```javascript id="6o1t7n"
+window.addEventListener('load', async ()=>{
+
+  try{
+
+    await cloudLoad();
+
+  }catch(e){
+
+    console.error('Startup failed:', e);
+
+    S = createDefaultState();
+
+    renderAll();
+  }
+
+});
+```
+
 </script>
 </body>
