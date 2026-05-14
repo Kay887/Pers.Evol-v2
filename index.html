@@ -4783,18 +4783,10 @@ window.addEventListener('load', async ()=>{
   try{
 
     await cloudLoad();
-
-  }catch(e){
-
-    console.error('Startup failed:', e);
-
-    S = createDefaultState();
-
-    renderAll();
-  }
-
-});
-```
+window.addEventListener('DOMContentLoaded',()=>{
+  initPIN();
+  S = createDefaultState();
+  ensureDaily();
   if(!S.ui) S.ui={};
   S.ui.ovDate = TODAY_S;
   renderAll();
@@ -4803,23 +4795,4 @@ window.addEventListener('load', async ()=>{
   setInterval(cloudLoad,5000);
   setInterval(()=>{if(curTab==='exercise')renderExCal();},3000);
 });
-window.addEventListener('load', async ()=>{
-
-  try{
-
-    await cloudLoad();
-
-  }catch(e){
-
-    console.error('Startup failed:', e);
-
-    S = createDefaultState();
-
-    renderAll();
-  }
-
-});
-```
-
 </script>
-</body>
