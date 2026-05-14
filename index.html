@@ -379,7 +379,6 @@ function getMon(d){ const m=new Date(d); m.setDate(d.getDate()-monIdx(d)); retur
 function sHeaders(){ return {'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Prefer':'resolution=merge-duplicates'}; }
 function syncDot(msg,c){ const el=document.getElementById('sync-dot'); if(el){el.textContent=msg;el.style.color=c||'var(--t3)';} }
 
-```javascript
 async function cloudLoad(){
   if(_syncing) return;
   _syncing = true;
