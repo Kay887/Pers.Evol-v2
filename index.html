@@ -405,7 +405,7 @@ return;
 
       await cloudSave();
 
-      renderAll();
+     renderAllSafe();
 
       _syncing = false;
 
@@ -443,7 +443,7 @@ return;
       S.ui.ovDate = TODAY_S;
     }
 
-    renderAll();
+    renderAllSafe();
 
     syncDot(
       '⇄ ' + new Date().toLocaleTimeString(),
@@ -1024,7 +1024,7 @@ function renderAllSafe(){
   const act = document.querySelector('.panel.active');
   if(!act) return;
   const panelId = act.id.replace('panel-','');
-  if(['exercise','daily','glucose','sleep','meals','weight','papers','products','rixtrace'].includes(panelId)) return;
+  if(['exercise','daily','glucose','sleep','meals','weight','papers','products','rixtrace','journal','weekly','goals'].includes(panelId)) return;
   buildPanel(panelId, act);
 }
 function renderAll(){
