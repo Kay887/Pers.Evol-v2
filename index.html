@@ -1016,7 +1016,17 @@ function getWeekKey(d){
 function calcOverall(){
   return Math.round(calcTaskPct()*.2+calcGoalPct()*.2+calcSubPct()*.18+calcExPct()*.18+calcDCPct()*.12+calcIntPct()*.12);
 }
-
+function renderAllSafe(){
+  ensureDaily();
+  document.getElementById('opct').textContent = calcOverall() + '%';
+  document.getElementById('day-lbl').textContent = `Day ${DAY_NUM} · ${Math.max(0,TOTAL_DAYS-DAY_NUM+1)} to go`;
+  renderNav();
+  const act = document.querySelector('.panel.active');
+  if(!act) return;
+  const panelId = act.id.replace('panel-','');
+  if(['exercise','daily','glucose','sleep','meals','weight','papers','products','rixtrace'].includes(panelId)) return;
+  buildPanel(panelId, act);
+}
 function renderAll(){
   ensureDaily();
   document.getElementById('opct').textContent=calcOverall()+'%';
@@ -1026,7 +1036,7 @@ function renderAll(){
   if(!act) return;
   const panelId=act.id.replace('panel-','');
   // Never force-rebuild exercise panel — user may be typing in watch ring inputs
-  if(panelId==='exercise') return;
+  if(['exercise','daily','glucose','sleep','meals','weight','papers','products','rixtrace'].includes(panelId)) return;
   buildPanel(panelId,act);
 }
 
@@ -2288,7 +2298,7 @@ function logExMulti() {
   sd('ui.exSegments', []);
   const totalMin = segs.reduce((a, s) => a + s.dur, 0);
   toast(`💪 Session logged — ${segs.length} activities · ${totalMin} min`);
-  renderAll();
+  renderAllSafe();
   switchTab('exercise');
 }
  
@@ -2322,7 +2332,7 @@ function quickLogSchedule() {
   logs.unshift({ date: TODAY_S, type: 'Resistance 💪', dur: sched.strength, note: sched.strengthName });
   sd('ex.logs', logs);
   toast(`⚡ ${sched.label} logged — ${sched.cycling + sched.strength} min total`);
-  renderAll();
+  renderAllSafe();
   switchTab('exercise');
 }
  
