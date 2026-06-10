@@ -21,6 +21,14 @@ html,body{height:100%;background:var(--bg);color:var(--t1);font-family:-apple-sy
 ::-webkit-scrollbar{width:3px;height:3px}::-webkit-scrollbar-thumb{background:var(--b1);border-radius:2px}
 input,textarea,select,button{font-family:inherit;-webkit-appearance:none}
 textarea{resize:vertical}
+  
+.recovery-link{margin-top:12px;background:none;border:none;color:var(--t3);font-size:10px;font-family:monospace;cursor:pointer;letter-spacing:1px;text-decoration:underline}
+#recovery-panel{display:none;margin-top:16px;width:100%;max-width:240px}
+#recovery-panel input{width:100%;background:var(--s2);border:1px solid var(--b2);border-radius:8px;color:var(--t1);padding:9px 12px;font-size:13px;outline:none;text-align:center;font-family:monospace;letter-spacing:2px;margin-bottom:8px}
+#recovery-panel button{width:100%;padding:9px;border-radius:8px;border:none;background:var(--gold);color:#07070f;font-size:12px;font-weight:600;cursor:pointer}
+.recovery-code-box{background:var(--s2);border:1px solid var(--gold);border-radius:10px;padding:16px;text-align:center;margin-top:16px;max-width:240px;width:100%}
+.recovery-code-box code{font-family:monospace;font-size:16px;font-weight:700;color:var(--gl);letter-spacing:3px;display:block;margin:8px 0}
+.recovery-code-box p{font-size:10px;color:var(--t3);line-height:1.6}
 
 /* layout */
 #app{display:flex;flex-direction:column;height:100vh;overflow:hidden}
@@ -242,6 +250,17 @@ textarea{resize:vertical}
     <div class="pin-key del" onclick="pinDel()">⌫</div>
   </div>
   <div class="pin-msg" id="pin-msg"></div>
+  <button class="recovery-link" onclick="toggleRecoveryPanel()">Forgot PIN?</button>
+<div id="recovery-panel">
+  <input id="recovery-inp" placeholder="XXXX-XXXX-XXXX" maxlength="14">
+  <button onclick="submitRecovery()">Reset with Recovery Code</button>
+</div>
+<div id="recovery-code-display" style="display:none" class="recovery-code-box">
+  <p>Your recovery code — screenshot or write this down.<br>You will not see it again.</p>
+  <code id="recovery-code-val"></code>
+  <button onclick="dismissRecoveryCode()" style="margin-top:8px;padding:7px 18px;border-radius:7px;border:none;background:var(--gold);color:#07070f;font-size:12px;font-weight:600;cursor:pointer">I've saved it →</button>
+</div>
+
   <button class="pin-change-btn" id="pin-change-btn" onclick="pinStartChange()" style="display:none">Change PIN</button>
 </div>
 
@@ -3467,11 +3486,10 @@ function toggleWP1Daily(day){sd('wp1.daily.'+day,!gd('wp1.daily.'+day,false));sw
 // PIN LOCK SYSTEM
 // ═══════════════════════════════════════════════════════
 let _pinBuffer  = '';
-let _pinMode    = 'unlock'; // 'unlock' | 'set' | 'confirm' | 'change_old' | 'change_new' | 'change_confirm'
+let _pinMode    = 'unlock';
 let _pinConfBuf = '';
 let _pinUnlocked = false;
 
-// SHA-256 hash using Web Crypto API
 async function sha256(str){
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
   return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
@@ -3479,6 +3497,44 @@ async function sha256(str){
 
 function pinGetStored(){ return localStorage.getItem('pev2_pin'); }
 function pinSetStored(hash){ localStorage.setItem('pev2_pin', hash); }
+function rcGetStored(){ return localStorage.getItem('pev2_rc'); }
+function rcSetStored(hash){ localStorage.setItem('pev2_rc', hash); }
+
+// Generate a readable recovery code like A3F2-B9K1-Z7M4
+function generateRecoveryCode(){
+  const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const seg=()=>Array.from({length:4},()=>chars[Math.floor(Math.random()*chars.length)]).join('');
+  return seg()+'-'+seg()+'-'+seg();
+}
+
+function toggleRecoveryPanel(){
+  const panel = document.getElementById('recovery-panel');
+  panel.style.display = panel.style.display==='block' ? 'none' : 'block';
+  if(panel.style.display==='block') document.getElementById('recovery-inp').focus();
+}
+
+async function submitRecovery(){
+  const val = document.getElementById('recovery-inp').value.trim().toUpperCase();
+  if(!val){ pinMsg('Enter your recovery code','error'); return; }
+  const hash = await sha256(val);
+  if(hash === rcGetStored()){
+    // Valid — wipe PIN, enter set mode
+    localStorage.removeItem('pev2_pin');
+    document.getElementById('recovery-panel').style.display='none';
+    document.getElementById('recovery-inp').value='';
+    _pinBuffer = '';
+    _pinMode = 'set';
+    document.getElementById('pin-title').textContent = 'Set a New PIN';
+    pinMsg('Recovery verified ✓ — set your new PIN','success');
+    pinUpdateDots('');
+  } else {
+    pinMsg('Invalid recovery code','error');
+  }
+}
+
+function dismissRecoveryCode(){
+  document.getElementById('recovery-code-display').style.display='none';
+}
 
 function pinUpdateDots(buf, state){
   for(let i=0;i<6;i++){
@@ -3515,7 +3571,6 @@ async function pinSubmit(){
 
   if(_pinMode === 'unlock'){
     if(!stored){
-      // No PIN set yet — switch to set mode
       _pinMode = 'set';
       _pinBuffer = '';
       document.getElementById('pin-title').textContent = 'Set a 6-digit PIN';
@@ -3523,11 +3578,8 @@ async function pinSubmit(){
       pinUpdateDots('');
       return;
     }
-    if(hash === stored){
-      pinUnlockSuccess();
-    } else {
-      pinWrongPIN();
-    }
+    if(hash === stored){ pinUnlockSuccess(); }
+    else { pinWrongPIN(); }
 
   } else if(_pinMode === 'set'){
     _pinConfBuf = _pinBuffer;
@@ -3540,20 +3592,26 @@ async function pinSubmit(){
   } else if(_pinMode === 'confirm'){
     if(_pinBuffer === _pinConfBuf){
       pinSetStored(hash);
+      // Generate and store recovery code
+      const rc = generateRecoveryCode();
+      sha256(rc).then(rcHash=>{
+        rcSetStored(rcHash);
+        document.getElementById('recovery-code-val').textContent = rc;
+        document.getElementById('recovery-code-display').style.display = 'block';
+      });
       _pinMode = 'unlock';
       _pinBuffer = '';
       _pinConfBuf = '';
       document.getElementById('pin-title').textContent = 'Enter PIN';
-      pinMsg('PIN set! Enter it to continue', 'success');
+      pinMsg('PIN set! Save your recovery code below ↓','success');
       pinUpdateDots('');
     } else {
       _pinBuffer = '';
       _pinMode = 'set';
       _pinConfBuf = '';
-      document.getElementById('pin-title').textContent = 'Set a 6-digit PIN';
-      pinUpdateDots('', 'error');
-      pinMsg('PINs did not match — try again', 'error');
-      setTimeout(()=>pinUpdateDots(''), 400);
+      pinUpdateDots('','error');
+      pinMsg('PINs did not match — try again','error');
+      setTimeout(()=>pinUpdateDots(''),400);
     }
 
   } else if(_pinMode === 'change_old'){
@@ -3563,9 +3621,7 @@ async function pinSubmit(){
       document.getElementById('pin-title').textContent = 'New PIN';
       pinMsg('Enter your new 6-digit PIN');
       pinUpdateDots('');
-    } else {
-      pinWrongPIN();
-    }
+    } else { pinWrongPIN(); }
 
   } else if(_pinMode === 'change_new'){
     _pinConfBuf = _pinBuffer;
@@ -3578,45 +3634,46 @@ async function pinSubmit(){
   } else if(_pinMode === 'change_confirm'){
     if(_pinBuffer === _pinConfBuf){
       pinSetStored(hash);
+      // Regenerate recovery code on PIN change too
+      const rc = generateRecoveryCode();
+      sha256(rc).then(rcHash=>{
+        rcSetStored(rcHash);
+        document.getElementById('recovery-code-val').textContent = rc;
+        document.getElementById('recovery-code-display').style.display = 'block';
+      });
       _pinBuffer = '';
       _pinConfBuf = '';
       _pinMode = 'unlock';
       document.getElementById('pin-title').textContent = 'Enter PIN';
-      pinMsg('PIN changed ✓', 'success');
+      pinMsg('PIN changed ✓ — save your new recovery code ↓','success');
       pinUpdateDots('');
-      setTimeout(()=>pinMsg(''), 2000);
+      setTimeout(()=>pinMsg(''),4000);
       document.getElementById('pin-screen').classList.add('unlocked');
     } else {
       _pinBuffer = '';
       _pinMode = 'change_new';
       _pinConfBuf = '';
-      pinUpdateDots('', 'error');
-      pinMsg('PINs did not match — try again', 'error');
-      setTimeout(()=>pinUpdateDots(''), 400);
+      pinUpdateDots('','error');
+      pinMsg('PINs did not match — try again','error');
+      setTimeout(()=>pinUpdateDots(''),400);
     }
   }
 }
 
 function pinWrongPIN(){
-  pinUpdateDots('●●●●●●', 'error');
-  pinMsg('Incorrect PIN', 'error');
+  pinUpdateDots('●●●●●●','error');
+  pinMsg('Incorrect PIN','error');
   _pinBuffer = '';
-  setTimeout(()=>{
-    pinUpdateDots('');
-    pinMsg('');
-  }, 700);
+  setTimeout(()=>{ pinUpdateDots(''); pinMsg(''); },700);
 }
 
 function pinUnlockSuccess(){
   _pinUnlocked = true;
-  pinMsg('', 'success');
+  pinMsg('','success');
   const screen = document.getElementById('pin-screen');
   screen.classList.add('pin-unlocking');
   document.getElementById('pin-change-btn').style.display = 'block';
-  setTimeout(()=>{
-    screen.classList.add('unlocked');
-    screen.classList.remove('pin-unlocking');
-  }, 250);
+  setTimeout(()=>{ screen.classList.add('unlocked'); screen.classList.remove('pin-unlocking'); },250);
 }
 
 function pinStartChange(){
@@ -3629,6 +3686,26 @@ function pinStartChange(){
   pinUpdateDots('');
   document.getElementById('pin-change-btn').style.display = 'none';
 }
+
+document.addEventListener('keydown', function(e){
+  if(document.getElementById('pin-screen').classList.contains('unlocked')) return;
+  if(document.activeElement.tagName==='INPUT') return; // don't intercept recovery input
+  if(e.key >= '0' && e.key <= '9') pinKey(e.key);
+  if(e.key === 'Backspace') pinDel();
+});
+
+function initPIN(){
+  const stored = pinGetStored();
+  if(!stored){
+    _pinMode = 'set';
+    document.getElementById('pin-title').textContent = 'Set a 6-digit PIN';
+    pinMsg('First time? Choose a PIN to protect your data');
+  } else {
+    _pinMode = 'unlock';
+    document.getElementById('pin-change-btn').style.display = 'none';
+  }
+}
+
 
 // Keyboard support
 document.addEventListener('keydown', function(e){
