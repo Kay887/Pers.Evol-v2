@@ -3706,29 +3706,6 @@ function initPIN(){
   }
 }
 
-
-// Keyboard support
-document.addEventListener('keydown', function(e){
-  if(document.getElementById('pin-screen').classList.contains('unlocked')) return;
-  if(e.key >= '0' && e.key <= '9') pinKey(e.key);
-  if(e.key === 'Backspace') pinDel();
-});
-
-// Boot: initialise PIN screen — called from DOMContentLoaded
-function initPIN(){
-  const stored = pinGetStored();
-  if(!stored){
-    _pinMode = 'set';
-    document.getElementById('pin-title').textContent = 'Set a 6-digit PIN';
-    pinMsg('First time? Choose a PIN to protect your data');
-  } else {
-    _pinMode = 'unlock';
-    document.getElementById('pin-title').textContent = 'Enter PIN';
-    document.getElementById('pin-change-btn').style.display = 'none';
-  }
-}
-
-
 function initSystemsMM(){
   const svg=document.getElementById('mm-svg');
   if(!svg) return;
